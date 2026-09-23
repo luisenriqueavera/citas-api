@@ -1,0 +1,20 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:citas_fcv_training}}
+    username: ${DB_USER:citas_app}
+    password: ${DB_PASSWORD:CHANGE_ME}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+server:
+  error:
+    include-message: never
+app:
+  jwt:
+    access-secret: ${JWT_ACCESS_SECRET:development-access-secret-must-be-at-least-32-characters}
+    refresh-secret: ${JWT_REFRESH_SECRET:development-refresh-secret-must-be-at-least-32-characters}
+    access-minutes: ${JWT_ACCESS_MINUTES:15}
+    refresh-days: ${JWT_REFRESH_DAYS:7}

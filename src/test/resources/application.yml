@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:citas;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+app:
+  jwt:
+    access-secret: test-access-secret-must-be-at-least-32-characters
+    refresh-secret: test-refresh-secret-must-be-at-least-32-characters
+    access-minutes: 15
+    refresh-days: 7
