@@ -1,5 +1,9 @@
 package co.fcv.citas.auth;
 
+import co.fcv.citas.insurance.InsurancePlan;
+import co.fcv.citas.insurance.InsurancePlanRepository;
+import co.fcv.citas.insurance.UserInsuranceAffiliation;
+import co.fcv.citas.insurance.UserInsuranceAffiliationRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,8 +18,11 @@ import static co.fcv.citas.auth.AuthDtos.*;
 public class AuthService {
     private final UserAccountRepository users; private final RoleRepository roles; private final RefreshTokenRepository refreshTokens;
     private final PasswordEncoder passwordEncoder; private final JwtService jwt;
-    public AuthService(UserAccountRepository users, RoleRepository roles, RefreshTokenRepository refreshTokens, PasswordEncoder passwordEncoder, JwtService jwt) {
+    private final InsurancePlanRepository plans; private final UserInsuranceAffiliationRepository affiliations;
+    public AuthService(UserAccountRepository users, RoleRepository roles, RefreshTokenRepository refreshTokens, PasswordEncoder passwordEncoder, JwtService jwt,
+                       InsurancePlanRepository plans, UserInsuranceAffiliationRepository affiliations) {
         this.users = users; this.roles = roles; this.refreshTokens = refreshTokens; this.passwordEncoder = passwordEncoder; this.jwt = jwt;
+        this.plans = plans; this.affiliations = affiliations;
     }
     @Transactional
     public RegisteredUser register(RegisterRequest request) {
@@ -23,9 +30,11 @@ public class AuthService {
         String type = request.documentType().trim().toUpperCase(); String number = request.documentNumber().trim();
         if (users.existsByEmailIgnoreCase(email)) throw new ConflictException("email already registered");
         if (users.existsByDocumentTypeAndDocumentNumber(type, number)) throw new ConflictException("document already registered");
+        InsurancePlan plan = request.planId() == null ? null : plans.findByIdAndActiveTrue(request.planId()).orElseThrow(InvalidPlanException::new);
         Role userRole = roles.findByCode("USER").orElseThrow(() -> new IllegalStateException("USER role is missing"));
         UserAccount user = new UserAccount(request.firstName().trim(), request.lastName().trim(), type, number, email, request.phone().trim(), passwordEncoder.encode(request.password()));
         user.addRole(userRole); users.save(user);
+        if (plan != null) affiliations.save(new UserInsuranceAffiliation(user, plan));
         return new RegisteredUser(user.getId(), user.getEmail(), List.of("USER"));
     }
     @Transactional
@@ -53,5 +62,6 @@ public class AuthService {
         catch (Exception ex) { throw new IllegalStateException(ex); }
     }
     public static class ConflictException extends RuntimeException { public ConflictException(String message) { super(message); } }
+    public static class InvalidPlanException extends RuntimeException { }
     public static class InvalidCredentialsException extends RuntimeException { }
 }
