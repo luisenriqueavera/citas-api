@@ -19,6 +19,9 @@ public class ApiExceptionHandler {
     @ExceptionHandler(co.fcv.citas.appointments.AppointmentService.InvalidAppointmentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     Map<String, String> invalidAppointment() { return Map.of("error", "invalid_appointment"); }
+    @ExceptionHandler({co.fcv.citas.catalog.AdminCatalogController.InvalidCatalogException.class, co.fcv.citas.availability.AvailabilityController.AvailabilityException.class})
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    Map<String, String> invalidCatalog(RuntimeException exception) { return Map.of("error", "invalid_request", "message", exception.getMessage()); }
     @ExceptionHandler({AuthService.InvalidCredentialsException.class, JwtService.InvalidTokenException.class})
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     Map<String, String> unauthorized() { return Map.of("error", "unauthorized"); }

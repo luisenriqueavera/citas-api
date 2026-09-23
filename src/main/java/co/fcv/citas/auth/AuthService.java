@@ -30,7 +30,8 @@ public class AuthService {
         String type = request.documentType().trim().toUpperCase(); String number = request.documentNumber().trim();
         if (users.existsByEmailIgnoreCase(email)) throw new ConflictException("email already registered");
         if (users.existsByDocumentTypeAndDocumentNumber(type, number)) throw new ConflictException("document already registered");
-        InsurancePlan plan = request.planId() == null ? null : plans.findByIdAndActiveTrue(request.planId()).orElseThrow(InvalidPlanException::new);
+        Long requestedPlanId = request.insurancePlanId() != null ? request.insurancePlanId() : request.planId();
+        InsurancePlan plan = requestedPlanId == null ? null : plans.findByIdAndActiveTrue(requestedPlanId).orElseThrow(InvalidPlanException::new);
         Role userRole = roles.findByCode("USER").orElseThrow(() -> new IllegalStateException("USER role is missing"));
         UserAccount user = new UserAccount(request.firstName().trim(), request.lastName().trim(), type, number, email, request.phone().trim(), passwordEncoder.encode(request.password()));
         user.addRole(userRole); users.save(user);

@@ -13,6 +13,6 @@ public class SecurityConfiguration {
     @Bean PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }
     @Bean SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http.csrf(csrf -> csrf.disable()).sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth.requestMatchers("/api/auth/**", "/api/insurance-plans", "/api/appointments/**").permitAll().anyRequest().authenticated()).build();
+                .authorizeHttpRequests(auth -> auth.requestMatchers("/api/auth/**", "/api/insurance-plans", "/api/appointments/**", "/api/v1/**").permitAll().anyRequest().authenticated()).build();
     }
 }

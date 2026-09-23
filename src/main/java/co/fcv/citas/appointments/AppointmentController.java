@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import static co.fcv.citas.appointments.AppointmentDtos.*;
 
 @RestController
-@RequestMapping("/api/appointments")
+@RequestMapping({"/api/appointments", "/api/v1/appointments"})
 public class AppointmentController {
     private final AppointmentService service;
     public AppointmentController(AppointmentService service) { this.service = service; }

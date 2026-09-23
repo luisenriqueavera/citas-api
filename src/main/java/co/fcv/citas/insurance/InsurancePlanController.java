@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/insurance-plans")
+@RequestMapping({"/api/insurance-plans", "/api/v1/catalogs/insurance-plans"})
 public class InsurancePlanController {
     private final InsurancePlanRepository plans;
     public InsurancePlanController(InsurancePlanRepository plans) { this.plans = plans; }

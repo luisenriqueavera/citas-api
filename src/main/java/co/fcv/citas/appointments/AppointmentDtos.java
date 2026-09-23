@@ -11,7 +11,8 @@ public final class AppointmentDtos {
             @NotNull Long professionalId,
             @NotNull Long locationId,
             @NotNull Long specialtyId,
-            @NotEmpty List<Long> slotIds,
+            List<Long> slotIds,
+            String startAt,
             String reason) { }
     public record AppointmentResponse(Long id, String status, List<Long> slotIds) { }
 }

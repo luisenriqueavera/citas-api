@@ -26,4 +26,5 @@ public class Appointment {
     }
     public Long getId() { return id; }
     public Long getStatusId() { return statusId; }
+    public void changeStatus(Long statusId) { this.statusId = statusId; }
 }
