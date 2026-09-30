@@ -32,6 +32,7 @@ public class JwtService {
     public String createAccessToken(UserAccount user) { return create(user, "access", Instant.now().plusSeconds(accessMinutes * 60), accessSecret); }
     public String createRefreshToken(UserAccount user) { return create(user, "refresh", Instant.now().plusSeconds(refreshDays * 86400), refreshSecret); }
     public Claims validateRefreshToken(String token) { return validate(token, "refresh", refreshSecret); }
+    public Claims validateAccessToken(String token) { return validate(token, "access", accessSecret); }
 
     private String create(UserAccount user, String type, Instant expiresAt, String secret) {
         try {
@@ -43,7 +44,7 @@ public class JwtService {
         } catch (Exception ex) { throw new IllegalStateException("Unable to create token", ex); }
     }
 
-    public record Claims(long subject, Instant expiresAt) { }
+    public record Claims(long subject, Instant expiresAt, List<String> roles) { }
     private Claims validate(String token, String expectedType, String secret) {
         try {
             String[] parts = token.split("\\.");
@@ -52,7 +53,8 @@ public class JwtService {
             if (!expectedType.equals(payload.get("typ"))) throw new InvalidTokenException();
             long exp = ((Number) payload.get("exp")).longValue();
             if (!Instant.ofEpochSecond(exp).isAfter(Instant.now())) throw new InvalidTokenException();
-            return new Claims(((Number) payload.get("sub")).longValue(), Instant.ofEpochSecond(exp));
+            List<String> roles = objectMapper.convertValue(payload.getOrDefault("roles", List.of()), new TypeReference<>() { });
+            return new Claims(((Number) payload.get("sub")).longValue(), Instant.ofEpochSecond(exp), roles);
         } catch (InvalidTokenException ex) { throw ex; }
         catch (Exception ex) { throw new InvalidTokenException(); }
     }

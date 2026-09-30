@@ -7,6 +7,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.test.context.support.WithMockUser;
 import java.util.Map;
 import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -16,6 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@WithMockUser(roles = "USER")
 class S3SchedulingIntegrationTest {
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
@@ -30,6 +32,7 @@ class S3SchedulingIntegrationTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     void specializedDecisionApproveKeepsSlotsAndRejectReleasesThem() throws Exception {
         String approved = objectMapper.writeValueAsString(Map.of("patientUserId", 100, "professionalId", 1, "locationId", 1, "specialtyId", 2, "slotIds", List.of(5, 6), "reason", "Solicitud S3"));
         String approvedResponse = mockMvc.perform(post("/api/v1/appointments").contentType(MediaType.APPLICATION_JSON).content(approved))

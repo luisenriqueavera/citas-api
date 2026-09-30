@@ -75,8 +75,8 @@ INSERT INTO appointment_statuses (code, name) VALUES ('REJECTED', 'Rechazada');
 
 INSERT INTO users (id, first_name, last_name, document_type, document_number, email, phone, password_hash, active)
 VALUES
-    (100, 'Paciente', 'Demo', 'CC', 'DEMO-USER-100', 'paciente.demo@fcv.local', '3000000100', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', TRUE),
-    (101, 'Profesional', 'Demo', 'CC', 'DEMO-PRO-101', 'profesional.demo@fcv.local', '3000000101', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', TRUE);
+    (100, 'Paciente', 'Demo', 'CC', 'DEMO-USER-100', 'paciente.demo@fcv.local', '3000000100', '$2a$10$5Ih8hESl5H6aHVoyl3KVxuEng7F39cDlTqaRyAzOQDJd1BnSpag0S', TRUE),
+    (101, 'Profesional', 'Demo', 'CC', 'DEMO-PRO-101', 'profesional.demo@fcv.local', '3000000101', '$2a$10$5Ih8hESl5H6aHVoyl3KVxuEng7F39cDlTqaRyAzOQDJd1BnSpag0S', TRUE);
 INSERT INTO user_roles (user_id, role_id) SELECT 100, id FROM roles WHERE code = 'USER';
 INSERT INTO user_roles (user_id, role_id) SELECT 101, id FROM roles WHERE code = 'PROFESSIONAL';
 INSERT INTO professionals (id, user_id, professional_code, license_number, active) VALUES (1, 101, 'DEMO-PRO-01', 'DEMO-LIC-01', TRUE);

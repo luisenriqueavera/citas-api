@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+set -eu
+
+secret_pattern='AKIA[0-9A-Z]{16}|-----BEGIN (RSA|EC|OPENSSH) PRIVATE KEY-----|JWT_(ACCESS|REFRESH)_SECRET[[:space:]]*='
+if command -v rg >/dev/null 2>&1; then
+  scan_result=$(rg -n --hidden --glob '!.git/**' --glob '!target/**' --glob '!*.example' "$secret_pattern" . || true)
+else
+  scan_result=$(find . -path './.git' -prune -o -path './target' -prune -o -type f -exec grep -nH -E "$secret_pattern" {} + | grep -v 'CHANGE_ME' || true)
+fi
+if [ -n "$scan_result" ]; then
+  printf '%s\n' "$scan_result"
+  echo "Secreto potencial detectado; commit bloqueado."
+  exit 1
+fi
+
+mvn -q test

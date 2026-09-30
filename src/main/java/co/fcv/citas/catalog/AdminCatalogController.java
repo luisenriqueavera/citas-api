@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -38,6 +41,35 @@ public class AdminCatalogController {
         user.addRole(role); users.saveAndFlush(user);
         jdbc.update("insert into professionals (user_id, professional_code, license_number, active) values (?, ?, ?, true)", user.getId(), request.professionalCode(), request.licenseNumber());
         return Map.of("id", jdbc.queryForObject("select id from professionals where user_id = ?", Long.class, user.getId()), "email", user.getEmail(), "professionalCode", request.professionalCode(), "active", true);
+    }
+    @GetMapping("/professionals")
+    public List<Map<String, Object>> professionals() {
+        List<Map<String, Object>> rows = jdbc.queryForList("""
+            select p.id, u.first_name firstName, u.last_name lastName, u.email,
+                   p.professional_code professionalCode, p.license_number licenseNumber,
+                   p.active, s.name specialtyName, s.duration_minutes durationMinutes,
+                   l.name locationName
+              from professionals p
+              join users u on u.id = p.user_id
+              left join professional_specialties ps on ps.professional_id = p.id and ps.primary_specialty = true and ps.active = true
+              left join specialties s on s.id = ps.specialty_id
+              left join professional_locations pl on pl.professional_id = p.id and pl.active = true
+              left join locations l on l.id = pl.location_id
+             order by p.id, l.id
+            """);
+        Map<Long, Map<String, Object>> grouped = new LinkedHashMap<>();
+        for (Map<String, Object> row : rows) {
+            Long id = ((Number) row.get("id")).longValue();
+            Map<String, Object> item = grouped.computeIfAbsent(id, ignored -> {
+                Map<String, Object> copy = new HashMap<>(row);
+                copy.remove("locationName");
+                copy.put("locationNames", new ArrayList<String>());
+                return copy;
+            });
+            Object location = row.get("locationName");
+            if (location != null) ((List<String>) item.get("locationNames")).add(location.toString());
+        }
+        return new ArrayList<>(grouped.values());
     }
     @PutMapping("/professionals/{id}/specialties")
     public Map<String, Object> assignSpecialties(@PathVariable Long id, @RequestBody AssignmentRequest request) {

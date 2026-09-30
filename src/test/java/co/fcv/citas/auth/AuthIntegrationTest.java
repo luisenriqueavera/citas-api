@@ -12,6 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MvcResult;
 import java.util.Map;
 import java.util.List;
@@ -19,10 +20,12 @@ import java.util.concurrent.*;
 import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@WithMockUser(roles = "USER")
 class AuthIntegrationTest {
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
@@ -172,7 +175,7 @@ class AuthIntegrationTest {
     private String login(String email, String password) throws Exception { return objectMapper.writeValueAsString(Map.of("email", email, "password", password)); }
     private String refresh(String token) throws Exception { return objectMapper.writeValueAsString(Map.of("refreshToken", token)); }
     private ReservationAttempt reserve(String body) throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/appointments").contentType(MediaType.APPLICATION_JSON).content(body)).andReturn();
+        MvcResult result = mockMvc.perform(post("/api/appointments").with(user("100").roles("USER")).contentType(MediaType.APPLICATION_JSON).content(body)).andReturn();
         return new ReservationAttempt(result.getResponse().getStatus(), result.getResponse().getContentAsString());
     }
     private record ReservationAttempt(int status, String body) { }
