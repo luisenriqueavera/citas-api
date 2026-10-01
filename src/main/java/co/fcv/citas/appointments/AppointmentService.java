@@ -172,8 +172,15 @@ public class AppointmentService {
 
     public List<Map<String, Object>> listPendingReschedules() {
         return jdbc.queryForList("select r.id, r.appointment_id, r.requested_by_user_id, r.reason, r.created_at, " +
-                "a.professional_id, a.location_id, a.specialty_id, a.scheduled_start_at old_start_at, a.scheduled_end_at old_end_at " +
-                "from reschedule_requests r join appointments a on a.id = r.appointment_id where r.status = 'PENDING' order by r.created_at");
+                "a.professional_id, a.location_id, a.specialty_id, a.scheduled_start_at old_start_at, a.scheduled_end_at old_end_at, " +
+                "min(ps.start_at) new_start_at, max(ps.end_at) new_end_at " +
+                "from reschedule_requests r " +
+                "join appointments a on a.id = r.appointment_id " +
+                "join reschedule_request_slots rrs on rrs.reschedule_request_id = r.id " +
+                "join professional_slots ps on ps.id = rrs.slot_id " +
+                "where r.status = 'PENDING' " +
+                "group by r.id, r.appointment_id, r.requested_by_user_id, r.reason, r.created_at, a.professional_id, a.location_id, a.specialty_id, a.scheduled_start_at, a.scheduled_end_at " +
+                "order by r.created_at");
     }
 
     @Transactional
