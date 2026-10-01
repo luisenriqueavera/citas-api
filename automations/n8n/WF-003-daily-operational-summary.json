@@ -1,0 +1,184 @@
+{
+  "name": "WF-003 - Resumen operativo diario",
+  "nodes": [
+    {
+      "id": "bd62916e-6250-4a6c-91c6-65e5d7abb639",
+      "name": "Programacion resumen diario",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [0, 0],
+      "parameters": { "rule": { "interval": [{ "field": "days", "daysInterval": 1, "triggerAtHour": 7, "triggerAtMinute": 0 }] } }
+    },
+    {
+      "id": "e3a2e924-108f-418e-b709-6d3332c519ab",
+      "name": "Configuracion",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [240, 0],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            { "id": "c1", "name": "apiBaseUrl", "value": "http://localhost:8080", "type": "string" },
+            { "id": "c2", "name": "reportRecipient", "value": "laboratorio@example.com", "type": "string" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "fe1c0d30-3b57-48c0-9fe7-16a92468c8cc",
+      "name": "Consultar resumen del dia",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [480, 0],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.apiBaseUrl }}/api/v1/admin/appointments/daily-summary",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpTemplatedCustomAuth",
+        "options": {}
+      },
+      "onError": "continueErrorOutput",
+      "notes": "Requiere la misma credencial 'Citas API Admin Token' (HTTP Templated Custom Auth) de WF-001. Nunca en este JSON."
+    },
+    {
+      "id": "ea3ff33f-6ef6-4480-8e15-4cc98fd38817",
+      "name": "Construir resumen",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [720, -120],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            { "id": "s1", "name": "subject", "value": "={{ \"Resumen operativo diario - FCV - \" + $json.date }}", "type": "string" },
+            { "id": "s2", "name": "htmlBody", "type": "string", "value": "={{ \"<h3>Resumen operativo - \" + $json.date + \"</h3>\" + \"<h4>Por sede</h4><ul>\" + $json.byLocation.map(r => \"<li>\" + r.locationName + \": \" + r.total + \"</li>\").join(\"\") + \"</ul>\" + \"<h4>Por estado</h4><ul>\" + $json.byStatus.map(r => \"<li>\" + r.status + \": \" + r.total + \"</li>\").join(\"\") + \"</ul>\" + \"<h4>Por especialidad</h4><ul>\" + $json.bySpecialty.map(r => \"<li>\" + r.specialtyName + \": \" + r.total + \"</li>\").join(\"\") + \"</ul>\" }}" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "da16d91f-010d-4e8b-8a3f-b42098afb882",
+      "name": "Construir aviso de incidencia",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [720, 120],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            { "id": "i1", "name": "subject", "value": "Resumen operativo diario - FCV - incidencia de API", "type": "string" },
+            { "id": "i2", "name": "htmlBody", "value": "={{ \"<p>No fue posible consultar el resumen operativo diario.</p><p>Detalle: \" + ($json.error || \"error desconocido\") + \"</p><p>Hora: \" + $now.toISO() + \"</p>\" }}", "type": "string" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "4ac3c110-b905-49f5-ad26-6bcf03e1498f",
+      "name": "Mensaje resumen listo",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [960, 0],
+      "parameters": { "mode": "manual", "includeOtherFields": true, "assignments": { "assignments": [] } }
+    },
+    {
+      "id": "866d7987-d79e-48cf-8ce0-7634994a4ef5",
+      "name": "Enviar resumen operativo",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [1200, 0],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $json.reportRecipient }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "message": "={{ $json.htmlBody }}",
+        "options": { "appendAttribution": false }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput",
+      "notes": "Requiere credencial Gmail OAuth2 propia 'Gmail FCV Citas' (compartida con WF-001/WF-002). Nunca en este JSON."
+    },
+    {
+      "id": "d29444d4-900b-488c-94d4-176c5456a8b7",
+      "name": "Registrar resumen enviado",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [1440, -80],
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "dataTableId": { "__rl": true, "mode": "id", "value": "iFqcFoNOeL2vc158", "cachedResultName": "daily_summary_log" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "reportDate": "={{ $('Mensaje resumen listo').item.json.date || $now.toFormat('yyyy-MM-dd') }}",
+            "result": "SENT",
+            "detail": "={{ $json.id || \"\" }}",
+            "loggedAt": "={{ $now }}"
+          },
+          "schema": [
+            { "id": "reportDate", "displayName": "reportDate", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "result", "displayName": "result", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "detail", "displayName": "detail", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "loggedAt", "displayName": "loggedAt", "type": "date", "display": true, "canBeUsedToMatch": true }
+          ]
+        }
+      }
+    },
+    {
+      "id": "6241505b-e449-4964-b6df-52748aff1872",
+      "name": "Registrar resumen fallido",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [1440, 80],
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "dataTableId": { "__rl": true, "mode": "id", "value": "iFqcFoNOeL2vc158", "cachedResultName": "daily_summary_log" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "reportDate": "={{ $('Mensaje resumen listo').item.json.date || $now.toFormat('yyyy-MM-dd') }}",
+            "result": "FAILED",
+            "detail": "={{ $json.error || \"Gmail send failed\" }}",
+            "loggedAt": "={{ $now }}"
+          },
+          "schema": [
+            { "id": "reportDate", "displayName": "reportDate", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "result", "displayName": "result", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "detail", "displayName": "detail", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "loggedAt", "displayName": "loggedAt", "type": "date", "display": true, "canBeUsedToMatch": true }
+          ]
+        }
+      }
+    },
+    {
+      "id": "e8375fe5-e281-4d76-a952-61f9e56c6751",
+      "name": "Sticky Note 16347cee",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [100, 300],
+      "parameters": {
+        "content": "## WF-003 - Resumen operativo diario (opcional/bonus)\nTrigger: Schedule (diario 07:00).\nConsulta GET /api/v1/admin/appointments/daily-summary (agregados por sede/estado/especialidad ya calculados en el backend) usando la misma credencial \"Citas API Admin Token\" (HTTP Templated Custom Auth) de WF-001.\nSi la API falla, se envia igualmente un correo de incidencia (no se omite el aviso).\nTrazabilidad: Data Table daily_summary_log (SENT/FAILED).\nCredencial Gmail: \"Gmail FCV Citas\" (misma de WF-001/WF-002). Destinatario configurable en el nodo Configuracion (reportRecipient); no requiere datos reales de pacientes.",
+        "color": 4
+      }
+    }
+  ],
+  "connections": {
+    "Programacion resumen diario": { "main": [[{ "node": "Configuracion", "type": "main", "index": 0 }]] },
+    "Configuracion": { "main": [[{ "node": "Consultar resumen del dia", "type": "main", "index": 0 }]] },
+    "Consultar resumen del dia": { "main": [[{ "node": "Construir resumen", "type": "main", "index": 0 }], [{ "node": "Construir aviso de incidencia", "type": "main", "index": 0 }]] },
+    "Construir resumen": { "main": [[{ "node": "Mensaje resumen listo", "type": "main", "index": 0 }]] },
+    "Construir aviso de incidencia": { "main": [[{ "node": "Mensaje resumen listo", "type": "main", "index": 0 }]] },
+    "Mensaje resumen listo": { "main": [[{ "node": "Enviar resumen operativo", "type": "main", "index": 0 }]] },
+    "Enviar resumen operativo": { "main": [[{ "node": "Registrar resumen enviado", "type": "main", "index": 0 }], [{ "node": "Registrar resumen fallido", "type": "main", "index": 0 }]] }
+  },
+  "pinData": {},
+  "settings": { "executionOrder": "v1" }
+}

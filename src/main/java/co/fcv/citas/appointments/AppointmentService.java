@@ -123,8 +123,7 @@ public class AppointmentService {
         appointments.saveAndFlush(appointment);
         jdbc.update("insert into appointment_status_history (appointment_id, status_id, changed_by_user_id, change_source, reason) values (?, ?, ?, 'USER', ?)",
                 appointmentId, cancelled.getId(), requesterUserId, null);
-        webhookNotifier.notifyStatusChange(new AppointmentWebhookNotifier.AppointmentStatusEvent(
-                appointmentId, currentStatus.getCode(), "CANCELLED", "USER", null, Instant.now().toString()));
+        notifyStatusChange(appointmentId, currentStatus.getCode(), "CANCELLED", "USER", null);
         log.info("Appointment cancelled: appointmentId={}, slots={}", appointmentId, slotIds);
         return new CancelResponse(appointmentId, "CANCELLED");
     }
@@ -219,8 +218,8 @@ public class AppointmentService {
         jdbc.update("insert into appointment_status_history (appointment_id, status_id, changed_by_user_id, change_source, reason) values (?, ?, ?, 'ADMIN', ?)",
                 appointment.getId(), appointment.getStatusId(), adminUserId,
                 "APPROVE".equals(decision) ? "Reprogramación aprobada" : ("Reprogramación rechazada: " + reason));
-        webhookNotifier.notifyStatusChange(new AppointmentWebhookNotifier.AppointmentStatusEvent(
-                appointment.getId(), "APPROVED", "APPROVED", "ADMIN", "RESCHEDULE_" + resultStatus + (reason != null ? ": " + reason : ""), Instant.now().toString()));
+        notifyStatusChange(appointment.getId(), "APPROVED", "APPROVED", "ADMIN",
+                "RESCHEDULE_" + resultStatus + (reason != null ? ": " + reason : ""));
         log.info("Reschedule decided: requestId={}, appointmentId={}, decision={}", rescheduleRequestId, appointment.getId(), resultStatus);
         return new RescheduleDecisionResponse(request.getId(), appointment.getId(), resultStatus);
     }
@@ -258,6 +257,22 @@ public class AppointmentService {
                 appointmentId, newStatus.getId(), actingUserId);
         log.info("Appointment closed out: appointmentId={}, outcome={}", appointmentId, outcome);
         return new CloseOutResponse(appointmentId, outcome);
+    }
+
+    public void notifyStatusChange(Long appointmentId, String previousStatus, String newStatus, String changeSource, String reason) {
+        if (!webhookNotifier.isEnabled()) return;
+        Map<String, Object> row = jdbc.queryForMap("select u.email patient_email, concat(u.first_name, ' ', u.last_name) patient_name, " +
+                "concat(pu.first_name, ' ', pu.last_name) professional_name, sp.name specialty_name, a.scheduled_start_at " +
+                "from appointments a " +
+                "join users u on u.id = a.patient_user_id " +
+                "join professionals p on p.id = a.professional_id " +
+                "join users pu on pu.id = p.user_id " +
+                "join specialties sp on sp.id = a.specialty_id " +
+                "where a.id = ?", appointmentId);
+        webhookNotifier.notifyStatusChange(new AppointmentWebhookNotifier.AppointmentStatusEvent(
+                appointmentId, previousStatus, newStatus, changeSource, reason, Instant.now().toString(),
+                (String) row.get("patient_email"), (String) row.get("patient_name"), (String) row.get("professional_name"),
+                (String) row.get("specialty_name"), row.get("scheduled_start_at").toString()));
     }
 
     public static class SlotAlreadyReservedException extends RuntimeException { }

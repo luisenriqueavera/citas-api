@@ -1,0 +1,363 @@
+{
+  "name": "WF-002 - Notificacion de cambio de estado",
+  "nodes": [
+    {
+      "id": "cfded250-eb2a-4e01-8e4c-e5b7813bb8bd",
+      "name": "Webhook cambio de estado",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [0, 0],
+      "parameters": { "httpMethod": "POST", "path": "appointment-status-notification", "responseMode": "responseNode" }
+    },
+    {
+      "id": "47f9cf23-fa79-415a-8498-cd8cc911ebd5",
+      "name": "Validar payload requerido",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [240, 0],
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            { "leftValue": "={{ $json.body.appointmentId }}", "operator": { "type": "string", "operation": "notEmpty" }, "rightValue": "" },
+            { "leftValue": "={{ $json.body.newStatus }}", "operator": { "type": "string", "operation": "notEmpty" }, "rightValue": "" },
+            { "leftValue": "={{ $json.body.changeSource }}", "operator": { "type": "string", "operation": "notEmpty" }, "rightValue": "" },
+            { "leftValue": "={{ $json.body.patientEmail }}", "operator": { "type": "string", "operation": "notEmpty" }, "rightValue": "" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "7ee17b97-99aa-4c4e-9c79-d4dcced25956",
+      "name": "Normalizar y clasificar evento",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [480, 0],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            { "id": "n1", "name": "appointmentId", "value": "={{ $json.body.appointmentId }}", "type": "string" },
+            { "id": "n2", "name": "previousStatus", "value": "={{ $json.body.previousStatus }}", "type": "string" },
+            { "id": "n3", "name": "newStatus", "value": "={{ $json.body.newStatus }}", "type": "string" },
+            { "id": "n4", "name": "changeSource", "value": "={{ $json.body.changeSource }}", "type": "string" },
+            { "id": "n5", "name": "reason", "value": "={{ $json.body.reason || \"\" }}", "type": "string" },
+            { "id": "n6", "name": "occurredAt", "value": "={{ $json.body.occurredAt }}", "type": "string" },
+            { "id": "n7", "name": "patientEmail", "value": "={{ $json.body.patientEmail }}", "type": "string" },
+            { "id": "n8", "name": "patientName", "value": "={{ $json.body.patientName }}", "type": "string" },
+            { "id": "n9", "name": "professionalName", "value": "={{ $json.body.professionalName }}", "type": "string" },
+            { "id": "n10", "name": "specialtyName", "value": "={{ $json.body.specialtyName }}", "type": "string" },
+            { "id": "n11", "name": "scheduledStartAt", "value": "={{ $json.body.scheduledStartAt }}", "type": "string" },
+            {
+              "id": "n12", "name": "eventType", "type": "string",
+              "value": "={{ ($json.body.reason || \"\").startsWith(\"RESCHEDULE_APPROVED\") ? \"RESCHEDULE_APPROVED\" : ($json.body.reason || \"\").startsWith(\"RESCHEDULE_REJECTED\") ? \"RESCHEDULE_REJECTED\" : $json.body.newStatus === \"CANCELLED\" ? \"CANCELLED\" : $json.body.newStatus === \"APPROVED\" ? \"APPROVED\" : $json.body.newStatus === \"REJECTED\" ? \"REJECTED\" : \"UNKNOWN\" }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d7ec5010-bedf-442c-ada9-ad0516dca80b",
+      "name": "Ramificar por tipo de evento",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [720, 0],
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            { "outputKey": "Cancelada", "conditions": { "combinator": "and", "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" }, "conditions": [{ "leftValue": "={{ $json.eventType }}", "operator": { "type": "string", "operation": "equals" }, "rightValue": "CANCELLED" }] } },
+            { "outputKey": "Aprobada", "conditions": { "combinator": "and", "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" }, "conditions": [{ "leftValue": "={{ $json.eventType }}", "operator": { "type": "string", "operation": "equals" }, "rightValue": "APPROVED" }] } },
+            { "outputKey": "Rechazada", "conditions": { "combinator": "and", "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" }, "conditions": [{ "leftValue": "={{ $json.eventType }}", "operator": { "type": "string", "operation": "equals" }, "rightValue": "REJECTED" }] } },
+            { "outputKey": "ReprogramacionAprobada", "conditions": { "combinator": "and", "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" }, "conditions": [{ "leftValue": "={{ $json.eventType }}", "operator": { "type": "string", "operation": "equals" }, "rightValue": "RESCHEDULE_APPROVED" }] } },
+            { "outputKey": "ReprogramacionRechazada", "conditions": { "combinator": "and", "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" }, "conditions": [{ "leftValue": "={{ $json.eventType }}", "operator": { "type": "string", "operation": "equals" }, "rightValue": "RESCHEDULE_REJECTED" }] } }
+          ]
+        },
+        "options": { "fallbackOutput": "extra", "renameFallbackOutput": "Desconocido" }
+      }
+    },
+    {
+      "id": "5de4e431-6815-4569-ba57-c334b422761a",
+      "name": "Mensaje: cancelacion",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [960, -320],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            { "id": "s1", "name": "subject", "value": "Cita cancelada - FCV", "type": "string" },
+            { "id": "s2", "name": "htmlBody", "value": "={{ \"<p>Hola \" + $json.patientName + \",</p><p>Tu cita con \" + $json.professionalName + \" (\" + $json.specialtyName + \") programada para \" + $json.scheduledStartAt + \" fue <strong>cancelada</strong>.</p>\" }}", "type": "string" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "7125384a-da24-4000-bdbf-6e2ab464155c",
+      "name": "Mensaje: cita aprobada",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [960, -160],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            { "id": "s1", "name": "subject", "value": "Cita especializada aprobada - FCV", "type": "string" },
+            { "id": "s2", "name": "htmlBody", "value": "={{ \"<p>Hola \" + $json.patientName + \",</p><p>Tu cita especializada con \" + $json.professionalName + \" (\" + $json.specialtyName + \") programada para \" + $json.scheduledStartAt + \" fue <strong>aprobada</strong>.</p>\" }}", "type": "string" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "dff8669f-eb00-4567-b12d-459ef5a2c534",
+      "name": "Mensaje: cita rechazada",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [960, 0],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            { "id": "s1", "name": "subject", "value": "Cita especializada rechazada - FCV", "type": "string" },
+            { "id": "s2", "name": "htmlBody", "value": "={{ \"<p>Hola \" + $json.patientName + \",</p><p>Tu cita especializada con \" + $json.professionalName + \" (\" + $json.specialtyName + \") programada para \" + $json.scheduledStartAt + \" fue <strong>rechazada</strong>.\" + ($json.reason ? \" Motivo: \" + $json.reason : \"\") + \"</p>\" }}", "type": "string" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a14199a2-05fa-4588-adeb-82e2860cdd95",
+      "name": "Mensaje: reprogramacion aprobada",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [960, 160],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            { "id": "s1", "name": "subject", "value": "Reprogramacion aprobada - FCV", "type": "string" },
+            { "id": "s2", "name": "htmlBody", "value": "={{ \"<p>Hola \" + $json.patientName + \",</p><p>Tu solicitud de reprogramacion con \" + $json.professionalName + \" (\" + $json.specialtyName + \") fue <strong>aprobada</strong>. Nueva fecha: \" + $json.scheduledStartAt + \".</p>\" }}", "type": "string" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "133f2d0d-8dd6-4cd2-a009-2a0c58f4d408",
+      "name": "Mensaje: reprogramacion rechazada",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [960, 320],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            { "id": "s1", "name": "subject", "value": "Reprogramacion rechazada - FCV", "type": "string" },
+            { "id": "s2", "name": "htmlBody", "value": "={{ \"<p>Hola \" + $json.patientName + \",</p><p>Tu solicitud de reprogramacion con \" + $json.professionalName + \" (\" + $json.specialtyName + \") fue <strong>rechazada</strong>.\" + ($json.reason ? \" Motivo: \" + $json.reason.replace(\"RESCHEDULE_REJECTED: \", \"\") : \"\") + \"</p>\" }}", "type": "string" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a58ff02a-b869-48a2-b425-e9bf74563dd5",
+      "name": "Evento no reconocido",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [960, 480],
+      "parameters": {}
+    },
+    {
+      "id": "7382e3fa-8452-441b-b574-34665faf1232",
+      "name": "Mensaje listo para enviar",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [1200, 0],
+      "parameters": { "mode": "manual", "includeOtherFields": true, "assignments": { "assignments": [] } }
+    },
+    {
+      "id": "37219ef9-fd81-42c7-8f07-a2e299df9daa",
+      "name": "Enviar notificacion por Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [1440, 0],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $json.patientEmail }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "message": "={{ $json.htmlBody }}",
+        "options": { "appendAttribution": false }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput",
+      "notesInFlow": false,
+      "notes": "Requiere credencial Gmail OAuth2 propia (configurar en n8n, nunca en este JSON)."
+    },
+    {
+      "id": "b99e3d2f-7044-43e9-b87a-53fe6fc093b2",
+      "name": "Registrar envio exitoso",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [1440, -120],
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "dataTableId": { "__rl": true, "mode": "id", "value": "VvN1X2qxEQhdPC4Q", "cachedResultName": "appointment_notifications_log" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "appointmentId": "={{ $('Normalizar y clasificar evento').item.json.appointmentId }}",
+            "eventType": "={{ $('Normalizar y clasificar evento').item.json.eventType }}",
+            "patientEmail": "={{ $('Normalizar y clasificar evento').item.json.patientEmail }}",
+            "subject": "={{ $('Mensaje listo para enviar').item.json.subject }}",
+            "result": "SENT",
+            "detail": "={{ $json.id || \"\" }}",
+            "occurredAt": "={{ $('Normalizar y clasificar evento').item.json.occurredAt }}",
+            "loggedAt": "={{ $now }}"
+          },
+          "schema": [
+            { "id": "appointmentId", "displayName": "appointmentId", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "eventType", "displayName": "eventType", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "patientEmail", "displayName": "patientEmail", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "subject", "displayName": "subject", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "result", "displayName": "result", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "detail", "displayName": "detail", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "occurredAt", "displayName": "occurredAt", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "loggedAt", "displayName": "loggedAt", "type": "date", "display": true, "canBeUsedToMatch": true }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a64a2847-a0b5-463b-aed6-8f248c9eaedc",
+      "name": "Registrar fallo de envio",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [1440, 120],
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "dataTableId": { "__rl": true, "mode": "id", "value": "VvN1X2qxEQhdPC4Q", "cachedResultName": "appointment_notifications_log" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "appointmentId": "={{ $('Normalizar y clasificar evento').item.json.appointmentId }}",
+            "eventType": "={{ $('Normalizar y clasificar evento').item.json.eventType }}",
+            "patientEmail": "={{ $('Normalizar y clasificar evento').item.json.patientEmail }}",
+            "subject": "={{ $('Mensaje listo para enviar').item.json.subject }}",
+            "result": "FAILED",
+            "detail": "={{ $json.error || \"Gmail send failed\" }}",
+            "occurredAt": "={{ $('Normalizar y clasificar evento').item.json.occurredAt }}",
+            "loggedAt": "={{ $now }}"
+          },
+          "schema": [
+            { "id": "appointmentId", "displayName": "appointmentId", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "eventType", "displayName": "eventType", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "patientEmail", "displayName": "patientEmail", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "subject", "displayName": "subject", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "result", "displayName": "result", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "detail", "displayName": "detail", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "occurredAt", "displayName": "occurredAt", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "loggedAt", "displayName": "loggedAt", "type": "date", "display": true, "canBeUsedToMatch": true }
+          ]
+        }
+      }
+    },
+    {
+      "id": "3f23d80b-b67f-4c3f-a925-edd33b4f98fd",
+      "name": "Registrar evento no reconocido",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [960, 620],
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "dataTableId": { "__rl": true, "mode": "id", "value": "VvN1X2qxEQhdPC4Q", "cachedResultName": "appointment_notifications_log" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "appointmentId": "={{ $('Normalizar y clasificar evento').item.json.appointmentId }}",
+            "eventType": "={{ $('Normalizar y clasificar evento').item.json.eventType }}",
+            "patientEmail": "={{ $('Normalizar y clasificar evento').item.json.patientEmail }}",
+            "subject": "",
+            "result": "SKIPPED_UNKNOWN_EVENT",
+            "detail": "={{ $('Normalizar y clasificar evento').item.json.newStatus + \"/\" + $('Normalizar y clasificar evento').item.json.changeSource + \"/\" + $('Normalizar y clasificar evento').item.json.reason }}",
+            "occurredAt": "={{ $('Normalizar y clasificar evento').item.json.occurredAt }}",
+            "loggedAt": "={{ $now }}"
+          },
+          "schema": [
+            { "id": "appointmentId", "displayName": "appointmentId", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "eventType", "displayName": "eventType", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "patientEmail", "displayName": "patientEmail", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "subject", "displayName": "subject", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "result", "displayName": "result", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "detail", "displayName": "detail", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "occurredAt", "displayName": "occurredAt", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "loggedAt", "displayName": "loggedAt", "type": "date", "display": true, "canBeUsedToMatch": true }
+          ]
+        }
+      }
+    },
+    {
+      "id": "53785011-dacc-4bd2-8019-04af78a34e7d",
+      "name": "Confirmar recepcion",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [1680, 0],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"ok\", \"appointmentId\": $('Normalizar y clasificar evento').item.json.appointmentId || null } }}",
+        "options": { "responseCode": 200 }
+      }
+    },
+    {
+      "id": "42e2014f-3d88-4047-bfd6-080d3a7b4ce4",
+      "name": "Rechazar payload invalido",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [480, 150],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"error\": \"invalid payload\", \"requiredFields\": [\"appointmentId\", \"newStatus\", \"changeSource\", \"patientEmail\"] } }}",
+        "options": { "responseCode": 400 }
+      }
+    },
+    {
+      "id": "d3d7a98a-3bf3-45b4-ad2c-797ac34c0c92",
+      "name": "Sticky Note be454a49",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [100, 300],
+      "parameters": {
+        "content": "## WF-002 - Notificacion de cambio de estado\nTrigger: Webhook POST desde citas-api (AppointmentWebhookNotifier).\nEventos: cita especializada aprobada/rechazada, reprogramacion aprobada/rechazada, cancelacion.\nTrazabilidad: cada envio (exitoso, fallido o evento desconocido) se registra en la Data Table appointment_notifications_log.\nCredencial Gmail: configurar \"Gmail FCV Citas\" con OAuth propio antes de activar.",
+        "color": 4
+      }
+    }
+  ],
+  "connections": {
+    "Webhook cambio de estado": { "main": [[{ "node": "Validar payload requerido", "type": "main", "index": 0 }]] },
+    "Validar payload requerido": { "main": [[{ "node": "Normalizar y clasificar evento", "type": "main", "index": 0 }], [{ "node": "Rechazar payload invalido", "type": "main", "index": 0 }]] },
+    "Normalizar y clasificar evento": { "main": [[{ "node": "Ramificar por tipo de evento", "type": "main", "index": 0 }]] },
+    "Ramificar por tipo de evento": { "main": [[{ "node": "Mensaje: cancelacion", "type": "main", "index": 0 }], [{ "node": "Mensaje: cita aprobada", "type": "main", "index": 0 }], [{ "node": "Mensaje: cita rechazada", "type": "main", "index": 0 }], [{ "node": "Mensaje: reprogramacion aprobada", "type": "main", "index": 0 }], [{ "node": "Mensaje: reprogramacion rechazada", "type": "main", "index": 0 }], [{ "node": "Evento no reconocido", "type": "main", "index": 0 }]] },
+    "Mensaje: cancelacion": { "main": [[{ "node": "Mensaje listo para enviar", "type": "main", "index": 0 }]] },
+    "Mensaje: cita aprobada": { "main": [[{ "node": "Mensaje listo para enviar", "type": "main", "index": 0 }]] },
+    "Mensaje: cita rechazada": { "main": [[{ "node": "Mensaje listo para enviar", "type": "main", "index": 0 }]] },
+    "Mensaje: reprogramacion aprobada": { "main": [[{ "node": "Mensaje listo para enviar", "type": "main", "index": 0 }]] },
+    "Mensaje: reprogramacion rechazada": { "main": [[{ "node": "Mensaje listo para enviar", "type": "main", "index": 0 }]] },
+    "Mensaje listo para enviar": { "main": [[{ "node": "Enviar notificacion por Gmail", "type": "main", "index": 0 }]] },
+    "Enviar notificacion por Gmail": { "main": [[{ "node": "Registrar envio exitoso", "type": "main", "index": 0 }], [{ "node": "Registrar fallo de envio", "type": "main", "index": 0 }]] },
+    "Registrar envio exitoso": { "main": [[{ "node": "Confirmar recepcion", "type": "main", "index": 0 }]] },
+    "Registrar fallo de envio": { "main": [[{ "node": "Confirmar recepcion", "type": "main", "index": 0 }]] },
+    "Evento no reconocido": { "main": [[{ "node": "Registrar evento no reconocido", "type": "main", "index": 0 }]] },
+    "Registrar evento no reconocido": { "main": [[{ "node": "Confirmar recepcion", "type": "main", "index": 0 }]] }
+  },
+  "pinData": {},
+  "settings": { "executionOrder": "v1" }
+}

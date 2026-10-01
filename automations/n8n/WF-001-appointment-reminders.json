@@ -1,0 +1,170 @@
+{
+  "name": "WF-001 - Recordatorio de citas proximas",
+  "nodes": [
+    {
+      "id": "7e7be451-9bce-4136-a247-7a9fe4e0db40",
+      "name": "Programacion recordatorios",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [0, 0],
+      "parameters": { "rule": { "interval": [{ "field": "hours", "hoursInterval": 6 }] } }
+    },
+    {
+      "id": "7e802f38-f78c-432d-af4c-df0dfe69e1ca",
+      "name": "Configuracion",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [240, 0],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            { "id": "c1", "name": "apiBaseUrl", "value": "http://localhost:8080", "type": "string" },
+            { "id": "c2", "name": "windowHours", "value": 24, "type": "number" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "e446b688-be3a-41ae-82b1-15ab0350e06c",
+      "name": "Consultar citas por confirmar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [480, 0],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.apiBaseUrl }}/api/v1/admin/appointments/upcoming-reminders",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpTemplatedCustomAuth",
+        "sendQuery": true,
+        "queryParameters": { "parameters": [{ "name": "withinHours", "value": "={{ $json.windowHours }}" }] },
+        "options": {}
+      },
+      "onError": "continueErrorOutput",
+      "notes": "Requiere credencial 'Citas API Admin Token' (HTTP Templated Custom Auth): plantilla {\"headers\":{\"Authorization\":\"Bearer {{token}}\"}} con un accessToken de login ADMIN. Nunca en este JSON."
+    },
+    {
+      "id": "39120e27-0f08-4018-abd0-80a19f1faa8b",
+      "name": "Separar citas",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [720, -120],
+      "parameters": { "fieldToSplitOut": "reminders", "include": "noOtherFields" }
+    },
+    {
+      "id": "f83de50e-75a2-4f16-8931-d5478a65ab19",
+      "name": "API no disponible - reintenta en el proximo ciclo",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [720, 180],
+      "parameters": {}
+    },
+    {
+      "id": "2bb135c7-dc4b-40d6-acc2-9a6fa2409459",
+      "name": "Omitir si ya se recordo",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [960, -120],
+      "parameters": {
+        "resource": "row",
+        "operation": "rowNotExists",
+        "dataTableId": { "__rl": true, "mode": "id", "value": "d8OAmrAPLekXcazf", "cachedResultName": "appointment_reminders_sent" },
+        "matchType": "allConditions",
+        "filters": { "conditions": [{ "keyName": "appointmentId", "condition": "eq", "keyValue": "={{ $json.id }}" }] }
+      }
+    },
+    {
+      "id": "d47e2a64-6ced-47cc-abff-d91c9be0e42e",
+      "name": "Mensaje recordatorio listo",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [1200, -120],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            { "id": "m1", "name": "subject", "value": "Recordatorio de cita - FCV", "type": "string" },
+            { "id": "m2", "name": "htmlBody", "value": "={{ \"<p>Hola \" + $json.patientName + \",</p><p>Te recordamos tu cita con \" + $json.professionalName + \" (\" + $json.specialtyName + \") en \" + $json.locationName + \" el \" + $json.startAt + \".</p>\" }}", "type": "string" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d7a0cc32-7c12-4365-88a6-d08654d3fcf7",
+      "name": "Enviar recordatorio",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [1440, -120],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $json.patientEmail }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "message": "={{ $json.htmlBody }}",
+        "options": { "appendAttribution": false }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput",
+      "notes": "Requiere credencial Gmail OAuth2 propia 'Gmail FCV Citas' (compartida con WF-002/WF-003). Nunca en este JSON."
+    },
+    {
+      "id": "fb59ef5d-bfa1-4b73-a802-66e4b60061f5",
+      "name": "Registrar recordatorio enviado",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [1680, -200],
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "dataTableId": { "__rl": true, "mode": "id", "value": "d8OAmrAPLekXcazf", "cachedResultName": "appointment_reminders_sent" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "appointmentId": "={{ $('Mensaje recordatorio listo').item.json.id }}",
+            "patientEmail": "={{ $('Mensaje recordatorio listo').item.json.patientEmail }}",
+            "sentAt": "={{ $now }}"
+          },
+          "schema": [
+            { "id": "appointmentId", "displayName": "appointmentId", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "patientEmail", "displayName": "patientEmail", "type": "string", "display": true, "canBeUsedToMatch": true },
+            { "id": "sentAt", "displayName": "sentAt", "type": "date", "display": true, "canBeUsedToMatch": true }
+          ]
+        }
+      }
+    },
+    {
+      "id": "943437db-4b3d-4eb1-9a4f-f4a41aa3140e",
+      "name": "Recordatorio no enviado - reintenta en el proximo ciclo",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1680, -40],
+      "parameters": {}
+    },
+    {
+      "id": "19cdcc9c-ef31-48df-9984-e8072ba6180d",
+      "name": "Sticky Note b37adf47",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [100, 300],
+      "parameters": {
+        "content": "## WF-001 - Recordatorio de citas proximas\nTrigger: Schedule (cada 6 horas).\nConsulta GET /api/v1/admin/appointments/upcoming-reminders (requiere credencial tipo \"HTTP Templated Custom Auth\" llamada \"Citas API Admin Token\": configurar plantilla {\"headers\":{\"Authorization\":\"Bearer {{token}}\"}} con el accessToken de un login ADMIN contra citas-api; expira segun app.jwt.access-minutes, renovar periodicamente en el lab).\nDedup: antes de enviar, se verifica en la Data Table appointment_reminders_sent que la cita no se haya recordado ya; solo se registra ahi tras un envio exitoso de Gmail, asi que un fallo de Gmail o de la API se reintenta solo en el siguiente ciclo (sin tabla de reintentos extra).\nCredencial Gmail: \"Gmail FCV Citas\" (misma credencial que WF-002).",
+        "color": 4
+      }
+    }
+  ],
+  "connections": {
+    "Programacion recordatorios": { "main": [[{ "node": "Configuracion", "type": "main", "index": 0 }]] },
+    "Configuracion": { "main": [[{ "node": "Consultar citas por confirmar", "type": "main", "index": 0 }]] },
+    "Consultar citas por confirmar": { "main": [[{ "node": "Separar citas", "type": "main", "index": 0 }], [{ "node": "API no disponible - reintenta en el proximo ciclo", "type": "main", "index": 0 }]] },
+    "Separar citas": { "main": [[{ "node": "Omitir si ya se recordo", "type": "main", "index": 0 }]] },
+    "Omitir si ya se recordo": { "main": [[{ "node": "Mensaje recordatorio listo", "type": "main", "index": 0 }]] },
+    "Mensaje recordatorio listo": { "main": [[{ "node": "Enviar recordatorio", "type": "main", "index": 0 }]] },
+    "Enviar recordatorio": { "main": [[{ "node": "Registrar recordatorio enviado", "type": "main", "index": 0 }], [{ "node": "Recordatorio no enviado - reintenta en el proximo ciclo", "type": "main", "index": 0 }]] }
+  },
+  "pinData": {},
+  "settings": { "executionOrder": "v1" }
+}

@@ -18,6 +18,7 @@ class AppointmentWebhookNotifierTest {
     }
 
     private AppointmentWebhookNotifier.AppointmentStatusEvent sampleEvent() {
-        return new AppointmentWebhookNotifier.AppointmentStatusEvent(1L, "APPROVED", "CANCELLED", "USER", null, "2031-01-01T00:00:00Z");
+        return new AppointmentWebhookNotifier.AppointmentStatusEvent(1L, "APPROVED", "CANCELLED", "USER", null, "2031-01-01T00:00:00Z",
+                "patient@example.com", "Jane Doe", "Dr. John Smith", "Cardiología", "2031-01-02T09:00:00");
     }
 }

@@ -22,6 +22,10 @@ public class AppointmentWebhookNotifier {
         this.url = url;
     }
 
+    public boolean isEnabled() {
+        return url != null && !url.isBlank();
+    }
+
     public void notifyStatusChange(AppointmentStatusEvent event) {
         if (url == null || url.isBlank()) {
             log.debug("Appointment webhook disabled; skipping appointmentId={}", event.appointmentId());
@@ -35,5 +39,7 @@ public class AppointmentWebhookNotifier {
     }
 
     public record AppointmentStatusEvent(Long appointmentId, String previousStatus, String newStatus,
-                                          String changeSource, String reason, String occurredAt) { }
+                                          String changeSource, String reason, String occurredAt,
+                                          String patientEmail, String patientName, String professionalName,
+                                          String specialtyName, String scheduledStartAt) { }
 }
