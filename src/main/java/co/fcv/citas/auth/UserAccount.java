@@ -33,4 +33,5 @@ public class UserAccount {
     public boolean isActive() { return active; }
     public Set<Role> getRoles() { return roles; }
     public void addRole(Role role) { roles.add(role); }
+    public void changePassword(String newHash) { this.passwordHash = newHash; }
 }

@@ -13,4 +13,13 @@ if [ -n "$scan_result" ]; then
   exit 1
 fi
 
-mvn -q test
+if command -v mvn >/dev/null 2>&1; then
+  mvn -q test
+elif command -v docker >/dev/null 2>&1 && docker compose -f ../docker-compose.yml ps --status running citas-api-dev >/dev/null 2>&1; then
+  echo "Maven no está en PATH; ejecutando pruebas en el contenedor citas-api-dev."
+  docker compose -f ../docker-compose.yml exec -T citas-api-dev mvn -q test
+else
+  echo "No se encontró Maven (mvn) ni un contenedor citas-api-dev disponible."
+  echo "Instala Maven y agrégalo al PATH, o inicia Docker Desktop antes del commit."
+  exit 1
+fi

@@ -13,7 +13,7 @@ public class InsurancePlanController {
 
     @GetMapping
     public List<PlanOption> activePlans() {
-        return plans.findAllByActiveTrueOrderByEpsNameAscNameAsc().stream()
+        return plans.findAllActiveWithActiveEps().stream()
                 .map(plan -> new PlanOption(plan.getId(), plan.getEpsName(), plan.getName()))
                 .toList();
     }

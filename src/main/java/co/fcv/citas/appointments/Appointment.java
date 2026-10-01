@@ -25,6 +25,16 @@ public class Appointment {
         this.scheduledStartAt = start; this.scheduledEndAt = end;
     }
     public Long getId() { return id; }
+    public Long getPatientUserId() { return patientUserId; }
+    public Long getProfessionalId() { return professionalId; }
+    public Long getLocationId() { return locationId; }
+    public Long getSpecialtyId() { return specialtyId; }
     public Long getStatusId() { return statusId; }
+    public String getReason() { return reason; }
+    public LocalDateTime getScheduledStartAt() { return scheduledStartAt; }
+    public LocalDateTime getScheduledEndAt() { return scheduledEndAt; }
     public void changeStatus(Long statusId) { this.statusId = statusId; }
+    public void reschedule(Long locationId, LocalDateTime start, LocalDateTime end) {
+        this.locationId = locationId; this.scheduledStartAt = start; this.scheduledEndAt = end;
+    }
 }

@@ -17,5 +17,8 @@ public class ProfessionalSlot {
     public LocalDateTime getStartAt() { return startAt; }
     public LocalDateTime getEndAt() { return endAt; }
     public Long getAppointmentId() { return appointmentId; }
+    public Long getProfessionalId() { return professionalId; }
+    public Long getLocationId() { return locationId; }
     public void reserve(Long appointmentId) { this.appointmentId = appointmentId; }
+    public void release() { this.appointmentId = null; }
 }

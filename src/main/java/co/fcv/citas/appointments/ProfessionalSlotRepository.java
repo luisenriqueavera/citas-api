@@ -12,4 +12,6 @@ public interface ProfessionalSlotRepository extends JpaRepository<ProfessionalSl
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from ProfessionalSlot s where s.id in :ids order by s.id")
     List<ProfessionalSlot> findAllByIdForUpdate(@Param("ids") List<Long> ids);
+
+    List<ProfessionalSlot> findAllByAppointmentId(Long appointmentId);
 }

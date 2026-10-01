@@ -31,7 +31,7 @@ public class AuthService {
         if (users.existsByEmailIgnoreCase(email)) throw new ConflictException("email already registered");
         if (users.existsByDocumentTypeAndDocumentNumber(type, number)) throw new ConflictException("document already registered");
         Long requestedPlanId = request.insurancePlanId() != null ? request.insurancePlanId() : request.planId();
-        InsurancePlan plan = requestedPlanId == null ? null : plans.findByIdAndActiveTrue(requestedPlanId).orElseThrow(InvalidPlanException::new);
+        InsurancePlan plan = requestedPlanId == null ? null : plans.findActiveByIdWithActiveEps(requestedPlanId).orElseThrow(InvalidPlanException::new);
         Role userRole = roles.findByCode("USER").orElseThrow(() -> new IllegalStateException("USER role is missing"));
         UserAccount user = new UserAccount(request.firstName().trim(), request.lastName().trim(), type, number, email, request.phone().trim(), passwordEncoder.encode(request.password()));
         user.addRole(userRole); users.save(user);
