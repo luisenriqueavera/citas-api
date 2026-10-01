@@ -28,6 +28,7 @@ class S3SchedulingIntegrationTest {
     void exposesActiveCatalogsAndTwoConsecutiveSlotsForSixtyMinuteSpecialty() throws Exception {
         mockMvc.perform(get("/api/v1/catalogs/locations")).andExpect(status().isOk()).andExpect(jsonPath("$[0].id").isNumber());
         mockMvc.perform(get("/api/v1/catalogs/specialties")).andExpect(status().isOk()).andExpect(jsonPath("$[?(@.durationMinutes == 60)]").isNotEmpty());
+        mockMvc.perform(get("/api/v1/catalogs/professionals")).andExpect(status().isOk()).andExpect(jsonPath("$[0].name").isNotEmpty());
         mockMvc.perform(get("/api/v1/availability").param("date", "2030-01-15").param("specialtyId", "2"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].slotIds.length()").value(2));
     }

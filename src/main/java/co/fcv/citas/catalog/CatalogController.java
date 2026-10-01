@@ -22,8 +22,14 @@ public class CatalogController {
     @GetMapping("/roles")
     public List<CodeOption> roles() { return jdbc.query("select id, code, code from roles order by id", (rs, row) ->
             new CodeOption(rs.getLong(1), rs.getString(2), rs.getString(3))); }
+    @GetMapping("/professionals")
+    public List<ProfessionalOption> professionals() { return jdbc.query(
+            "select p.id, concat(u.first_name, ' ', u.last_name) name, p.professional_code from professionals p " +
+            "join users u on u.id = p.user_id where p.active = true order by name",
+            (rs, row) -> new ProfessionalOption(rs.getLong("id"), rs.getString("name"), rs.getString("professional_code"))); }
 
     public record LocationOption(Long id, String code, String name, String address, String city) { }
     public record SpecialtyOption(Long id, String code, String name, boolean general, int durationMinutes) { }
     public record CodeOption(Long id, String code, String name) { }
+    public record ProfessionalOption(Long id, String name, String professionalCode) { }
 }
