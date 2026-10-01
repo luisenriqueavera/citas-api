@@ -13,6 +13,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -38,7 +39,7 @@ class S3SchedulingIntegrationTest {
         String approvedResponse = mockMvc.perform(post("/api/v1/appointments").contentType(MediaType.APPLICATION_JSON).content(approved))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.status").value("REQUESTED")).andReturn().getResponse().getContentAsString();
         long approvedId = objectMapper.readTree(approvedResponse).get("id").asLong();
-        mockMvc.perform(post("/api/v1/admin/appointments/{id}/decision", approvedId).contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/v1/admin/appointments/{id}/decision", approvedId).with(user("102").roles("ADMIN")).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("decision", "APPROVE", "adminUserId", 100))))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("APPROVED"));
         assertThat(slots.findAllById(List.of(5L, 6L))).allSatisfy(slot -> assertThat(slot.getAppointmentId()).isEqualTo(approvedId));
@@ -47,10 +48,10 @@ class S3SchedulingIntegrationTest {
         String rejectedResponse = mockMvc.perform(post("/api/v1/appointments").contentType(MediaType.APPLICATION_JSON).content(rejected))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.status").value("REQUESTED")).andReturn().getResponse().getContentAsString();
         long rejectedId = objectMapper.readTree(rejectedResponse).get("id").asLong();
-        mockMvc.perform(post("/api/v1/admin/appointments/{id}/decision", rejectedId).contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/v1/admin/appointments/{id}/decision", rejectedId).with(user("102").roles("ADMIN")).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("decision", "REJECT", "adminUserId", 100))))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").value("invalid_appointment"));
-        mockMvc.perform(post("/api/v1/admin/appointments/{id}/decision", rejectedId).contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/v1/admin/appointments/{id}/decision", rejectedId).with(user("102").roles("ADMIN")).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("decision", "REJECT", "adminUserId", 100, "reason", "No pertinencia"))))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.slotsReleased").value(true));
         assertThat(slots.findAllById(List.of(7L, 8L))).allSatisfy(slot -> assertThat(slot.getAppointmentId()).isNull());

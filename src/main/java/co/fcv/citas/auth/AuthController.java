@@ -16,4 +16,12 @@ public class AuthController {
     public TokenPair login(@Valid @RequestBody LoginRequest request) { return authService.login(request); }
     @PostMapping("/refresh")
     public TokenPair refresh(@Valid @RequestBody RefreshRequest request) { return authService.refresh(request); }
+    @PostMapping("/password-reset/request")
+    public RequestPasswordResetResponse requestPasswordReset(@Valid @RequestBody RequestPasswordResetRequest request) {
+        return authService.requestPasswordReset(request);
+    }
+    @PostMapping("/password-reset/confirm")
+    public void confirmPasswordReset(@Valid @RequestBody ConfirmPasswordResetRequest request) {
+        authService.resetPassword(request);
+    }
 }

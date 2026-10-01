@@ -28,4 +28,16 @@ public class ApiExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     Map<String, String> validation() { return Map.of("error", "validation_failed"); }
+    @ExceptionHandler(AuthService.InvalidResetTokenException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    Map<String, String> invalidResetToken() { return Map.of("error", "invalid_reset_token"); }
+    @ExceptionHandler(co.fcv.citas.appointments.AppointmentService.AppointmentNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    Map<String, String> appointmentNotFound() { return Map.of("error", "not_found"); }
+    @ExceptionHandler(co.fcv.citas.appointments.AppointmentService.ForbiddenAppointmentException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    Map<String, String> forbiddenAppointment() { return Map.of("error", "forbidden"); }
+    @ExceptionHandler(co.fcv.citas.appointments.AppointmentService.InvalidTransitionException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    Map<String, String> invalidTransition(RuntimeException exception) { return Map.of("error", "invalid_transition", "message", exception.getMessage()); }
 }

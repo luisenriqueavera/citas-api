@@ -21,4 +21,7 @@ public final class AuthDtos {
     public record RefreshRequest(@NotBlank String refreshToken) { }
     public record RegisteredUser(Long id, String email, List<String> roles) { }
     public record TokenPair(String accessToken, String refreshToken, String tokenType) { }
+    public record RequestPasswordResetRequest(@NotBlank @Email String email) { }
+    public record RequestPasswordResetResponse(String message, String devToken) { }
+    public record ConfirmPasswordResetRequest(@NotBlank String token, @NotBlank @Size(min = 8, max = 72) String newPassword) { }
 }

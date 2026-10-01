@@ -18,3 +18,5 @@ app:
     refresh-secret: ${JWT_REFRESH_SECRET:development-refresh-secret-must-be-at-least-32-characters}
     access-minutes: ${JWT_ACCESS_MINUTES:15}
     refresh-days: ${JWT_REFRESH_DAYS:7}
+  webhooks:
+    appointment-status-url: ${APPOINTMENT_WEBHOOK_URL:}

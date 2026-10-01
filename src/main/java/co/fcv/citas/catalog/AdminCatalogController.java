@@ -34,6 +34,60 @@ public class AdminCatalogController {
         if (jdbc.update("update specialties set active = ? where id = ?", request.active(), id) != 1) throw new InvalidCatalogException("specialty not found");
         return Map.of("id", id, "active", request.active());
     }
+    @PatchMapping("/specialties/{id}")
+    public Map<String, Object> updateSpecialty(@PathVariable Long id, @Valid @RequestBody SpecialtyUpdateRequest request) {
+        if (request.durationMinutes() != 30 && request.durationMinutes() != 60) throw new InvalidCatalogException("duration must be 30 or 60");
+        if (jdbc.update("update specialties set name = ?, duration_minutes = ? where id = ?", request.name(), request.durationMinutes(), id) != 1) throw new InvalidCatalogException("specialty not found");
+        return Map.of("id", id, "name", request.name(), "durationMinutes", request.durationMinutes());
+    }
+
+    @GetMapping("/eps")
+    public List<Map<String, Object>> listEps() {
+        List<Map<String, Object>> epsRows = jdbc.queryForList("select id, code, name, active from eps order by name");
+        List<Map<String, Object>> planRows = jdbc.queryForList("select id, eps_id, code, name, active from eps_plans order by eps_id, name");
+        for (Map<String, Object> eps : epsRows) {
+            long epsId = ((Number) eps.get("id")).longValue();
+            eps.put("plans", planRows.stream().filter(plan -> ((Number) plan.get("eps_id")).longValue() == epsId).toList());
+        }
+        return epsRows;
+    }
+    @PostMapping("/eps") @ResponseStatus(HttpStatus.CREATED)
+    public Map<String, Object> createEps(@Valid @RequestBody EpsRequest request) {
+        if (!jdbc.query("select id from eps where code = ?", (rs, row) -> rs.getLong(1), request.code()).isEmpty())
+            throw new InvalidCatalogException("eps code already exists");
+        jdbc.update("insert into eps (code, name, active) values (?, ?, true)", request.code(), request.name());
+        return Map.of("code", request.code(), "name", request.name(), "active", true);
+    }
+    @PatchMapping("/eps/{id}")
+    public Map<String, Object> updateEps(@PathVariable Long id, @Valid @RequestBody EpsNameRequest request) {
+        if (jdbc.update("update eps set name = ? where id = ?", request.name(), id) != 1) throw new InvalidCatalogException("eps not found");
+        jdbc.update("update eps_plans set eps_name = ? where eps_id = ?", request.name(), id);
+        return Map.of("id", id, "name", request.name());
+    }
+    @PatchMapping("/eps/{id}/active")
+    public Map<String, Object> changeEpsActive(@PathVariable Long id, @RequestBody ActiveRequest request) {
+        if (jdbc.update("update eps set active = ? where id = ?", request.active(), id) != 1) throw new InvalidCatalogException("eps not found");
+        return Map.of("id", id, "active", request.active());
+    }
+    @PostMapping("/eps/{id}/plans") @ResponseStatus(HttpStatus.CREATED)
+    public Map<String, Object> createEpsPlan(@PathVariable Long id, @Valid @RequestBody EpsPlanRequest request) {
+        List<String> epsNames = jdbc.query("select name from eps where id = ?", (rs, row) -> rs.getString(1), id);
+        if (epsNames.isEmpty()) throw new InvalidCatalogException("eps not found");
+        if (!jdbc.query("select id from eps_plans where eps_id = ? and code = ?", (rs, row) -> rs.getLong(1), id, request.code()).isEmpty())
+            throw new InvalidCatalogException("plan code already exists for this eps");
+        jdbc.update("insert into eps_plans (eps_id, code, eps_name, name, active) values (?, ?, ?, ?, true)", id, request.code(), epsNames.get(0), request.name());
+        return Map.of("epsId", id, "code", request.code(), "name", request.name(), "active", true);
+    }
+    @PatchMapping("/eps-plans/{id}")
+    public Map<String, Object> updateEpsPlan(@PathVariable Long id, @Valid @RequestBody EpsPlanNameRequest request) {
+        if (jdbc.update("update eps_plans set name = ? where id = ?", request.name(), id) != 1) throw new InvalidCatalogException("plan not found");
+        return Map.of("id", id, "name", request.name());
+    }
+    @PatchMapping("/eps-plans/{id}/active")
+    public Map<String, Object> changeEpsPlanActive(@PathVariable Long id, @RequestBody ActiveRequest request) {
+        if (jdbc.update("update eps_plans set active = ? where id = ?", request.active(), id) != 1) throw new InvalidCatalogException("plan not found");
+        return Map.of("id", id, "active", request.active());
+    }
     @PostMapping("/professionals") @ResponseStatus(HttpStatus.CREATED) @Transactional
     public Map<String, Object> createProfessional(@Valid @RequestBody ProfessionalRequest request) {
         Role role = roles.findByCode("PROFESSIONAL").orElseThrow(() -> new IllegalStateException("PROFESSIONAL role is missing"));
@@ -89,8 +143,13 @@ public class AdminCatalogController {
         return Map.of("id", id, "active", request.active());
     }
     public record SpecialtyRequest(@NotBlank String code, @NotBlank String name, boolean general, @NotNull Integer durationMinutes) { }
+    public record SpecialtyUpdateRequest(@NotBlank String name, @NotNull Integer durationMinutes) { }
     public record ProfessionalRequest(@NotBlank String firstName, @NotBlank String lastName, @NotBlank String documentType, @NotBlank String documentNumber, @Email @NotBlank String email, @NotBlank String phone, @NotBlank String temporaryPassword, @NotBlank String professionalCode, @NotBlank String licenseNumber) { }
     public record AssignmentRequest(List<Long> ids, Long primaryId) { }
     public record ActiveRequest(boolean active) { }
+    public record EpsRequest(@NotBlank String code, @NotBlank String name) { }
+    public record EpsNameRequest(@NotBlank String name) { }
+    public record EpsPlanRequest(@NotBlank String code, @NotBlank String name) { }
+    public record EpsPlanNameRequest(@NotBlank String name) { }
     public static class InvalidCatalogException extends RuntimeException { public InvalidCatalogException(String message) { super(message); } }
 }
