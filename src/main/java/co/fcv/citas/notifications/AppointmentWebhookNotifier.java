@@ -16,10 +16,13 @@ import org.springframework.web.client.RestClient;
 public class AppointmentWebhookNotifier {
     private static final Logger log = LoggerFactory.getLogger(AppointmentWebhookNotifier.class);
     private final String url;
+    private final String sharedSecret;
     private final RestClient restClient = RestClient.create();
 
-    public AppointmentWebhookNotifier(@Value("${app.webhooks.appointment-status-url:}") String url) {
+    public AppointmentWebhookNotifier(@Value("${app.webhooks.appointment-status-url:}") String url,
+                                       @Value("${app.webhooks.appointment-status-secret:}") String sharedSecret) {
         this.url = url;
+        this.sharedSecret = sharedSecret;
     }
 
     public boolean isEnabled() {
@@ -32,7 +35,11 @@ public class AppointmentWebhookNotifier {
             return;
         }
         try {
-            restClient.post().uri(url).contentType(MediaType.APPLICATION_JSON).body(event).retrieve().toBodilessEntity();
+            var request = restClient.post().uri(url).contentType(MediaType.APPLICATION_JSON);
+            if (sharedSecret != null && !sharedSecret.isBlank()) {
+                request = request.header("X-Webhook-Secret", sharedSecret);
+            }
+            request.body(event).retrieve().toBodilessEntity();
         } catch (Exception ex) {
             log.warn("Appointment webhook notification failed for appointmentId={}: {}", event.appointmentId(), ex.getMessage());
         }

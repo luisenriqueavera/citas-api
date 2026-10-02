@@ -20,3 +20,4 @@ app:
     refresh-days: ${JWT_REFRESH_DAYS:7}
   webhooks:
     appointment-status-url: ${APPOINTMENT_WEBHOOK_URL:}
+    appointment-status-secret: ${APPOINTMENT_WEBHOOK_SECRET:}

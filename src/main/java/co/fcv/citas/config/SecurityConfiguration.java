@@ -2,6 +2,7 @@ package co.fcv.citas.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,6 +19,7 @@ public class SecurityConfiguration {
                 .addFilterBefore(new JwtAuthenticationFilter(jwt), UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**", "/api/insurance-plans").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/appointments/upcoming-reminders", "/api/v1/admin/appointments/daily-summary").hasAnyRole("ADMIN", "AUTOMATION")
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/professional/**", "/api/professional/**").hasRole("PROFESSIONAL")
                         .requestMatchers("/api/v1/**", "/api/appointments/**").hasAnyRole("USER", "PROFESSIONAL", "ADMIN")

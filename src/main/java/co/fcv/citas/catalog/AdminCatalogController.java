@@ -142,9 +142,18 @@ public class AdminCatalogController {
         if (jdbc.update("update professionals set active = ? where id = ?", request.active(), id) != 1) throw new InvalidCatalogException("professional not found");
         return Map.of("id", id, "active", request.active());
     }
+    @PostMapping("/automation-accounts") @ResponseStatus(HttpStatus.CREATED) @Transactional
+    public Map<String, Object> createAutomationAccount(@Valid @RequestBody AutomationAccountRequest request) {
+        Role role = roles.findByCode("AUTOMATION").orElseThrow(() -> new IllegalStateException("AUTOMATION role is missing"));
+        UserAccount user = new UserAccount(request.firstName(), request.lastName(), request.documentType(), request.documentNumber(), request.email(), request.phone(), encoder.encode(request.temporaryPassword()));
+        user.addRole(role); users.saveAndFlush(user);
+        return Map.of("id", user.getId(), "email", user.getEmail());
+    }
+
     public record SpecialtyRequest(@NotBlank String code, @NotBlank String name, boolean general, @NotNull Integer durationMinutes) { }
     public record SpecialtyUpdateRequest(@NotBlank String name, @NotNull Integer durationMinutes) { }
     public record ProfessionalRequest(@NotBlank String firstName, @NotBlank String lastName, @NotBlank String documentType, @NotBlank String documentNumber, @Email @NotBlank String email, @NotBlank String phone, @NotBlank String temporaryPassword, @NotBlank String professionalCode, @NotBlank String licenseNumber) { }
+    public record AutomationAccountRequest(@NotBlank String firstName, @NotBlank String lastName, @NotBlank String documentType, @NotBlank String documentNumber, @Email @NotBlank String email, @NotBlank String phone, @NotBlank String temporaryPassword) { }
     public record AssignmentRequest(List<Long> ids, Long primaryId) { }
     public record ActiveRequest(boolean active) { }
     public record EpsRequest(@NotBlank String code, @NotBlank String name) { }

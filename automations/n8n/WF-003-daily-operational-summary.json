@@ -39,7 +39,7 @@
         "options": {}
       },
       "onError": "continueErrorOutput",
-      "notes": "Requiere la misma credencial 'Citas API Admin Token' (HTTP Templated Custom Auth) de WF-001. Nunca en este JSON."
+      "notes": "Requiere la misma credencial 'Citas API Admin Token' (HTTP Templated Custom Auth) de WF-001, idealmente con un accessToken de un usuario con rol AUTOMATION en vez de ADMIN completo (ver nota de WF-001). Nunca en este JSON."
     },
     {
       "id": "ea3ff33f-6ef6-4480-8e15-4cc98fd38817",
@@ -53,7 +53,7 @@
         "assignments": {
           "assignments": [
             { "id": "s1", "name": "subject", "value": "={{ \"Resumen operativo diario - FCV - \" + $json.date }}", "type": "string" },
-            { "id": "s2", "name": "htmlBody", "type": "string", "value": "={{ \"<h3>Resumen operativo - \" + $json.date + \"</h3>\" + \"<h4>Por sede</h4><ul>\" + $json.byLocation.map(r => \"<li>\" + r.locationName + \": \" + r.total + \"</li>\").join(\"\") + \"</ul>\" + \"<h4>Por estado</h4><ul>\" + $json.byStatus.map(r => \"<li>\" + r.status + \": \" + r.total + \"</li>\").join(\"\") + \"</ul>\" + \"<h4>Por especialidad</h4><ul>\" + $json.bySpecialty.map(r => \"<li>\" + r.specialtyName + \": \" + r.total + \"</li>\").join(\"\") + \"</ul>\" }}" }
+            { "id": "s2", "name": "htmlBody", "type": "string", "value": "={{ (() => { const esc = (v) => String(v ?? \"\").replace(/&/g, \"&amp;\").replace(/</g, \"&lt;\").replace(/>/g, \"&gt;\").replace(/\"/g, \"&quot;\").replace(/'/g, \"&#39;\"); return \"<h3>Resumen operativo - \" + esc($json.date) + \"</h3>\" + \"<h4>Por sede</h4><ul>\" + $json.byLocation.map(r => \"<li>\" + esc(r.locationName) + \": \" + r.total + \"</li>\").join(\"\") + \"</ul>\" + \"<h4>Por estado</h4><ul>\" + $json.byStatus.map(r => \"<li>\" + esc(r.status) + \": \" + r.total + \"</li>\").join(\"\") + \"</ul>\" + \"<h4>Por especialidad</h4><ul>\" + $json.bySpecialty.map(r => \"<li>\" + esc(r.specialtyName) + \": \" + r.total + \"</li>\").join(\"\") + \"</ul>\"; })() }}" }
           ]
         }
       }
@@ -70,7 +70,7 @@
         "assignments": {
           "assignments": [
             { "id": "i1", "name": "subject", "value": "Resumen operativo diario - FCV - incidencia de API", "type": "string" },
-            { "id": "i2", "name": "htmlBody", "value": "={{ \"<p>No fue posible consultar el resumen operativo diario.</p><p>Detalle: \" + ($json.error || \"error desconocido\") + \"</p><p>Hora: \" + $now.toISO() + \"</p>\" }}", "type": "string" }
+            { "id": "i2", "name": "htmlBody", "value": "={{ (() => { const esc = (v) => String(v ?? \"\").replace(/&/g, \"&amp;\").replace(/</g, \"&lt;\").replace(/>/g, \"&gt;\").replace(/\"/g, \"&quot;\").replace(/'/g, \"&#39;\"); return \"<p>No fue posible consultar el resumen operativo diario.</p><p>Detalle: \" + esc($json.error || \"error desconocido\") + \"</p><p>Hora: \" + $now.toISO() + \"</p>\"; })() }}", "type": "string" }
           ]
         }
       }
@@ -165,7 +165,7 @@
       "typeVersion": 1,
       "position": [100, 300],
       "parameters": {
-        "content": "## WF-003 - Resumen operativo diario (opcional/bonus)\nTrigger: Schedule (diario 07:00).\nConsulta GET /api/v1/admin/appointments/daily-summary (agregados por sede/estado/especialidad ya calculados en el backend) usando la misma credencial \"Citas API Admin Token\" (HTTP Templated Custom Auth) de WF-001.\nSi la API falla, se envia igualmente un correo de incidencia (no se omite el aviso).\nTrazabilidad: Data Table daily_summary_log (SENT/FAILED).\nCredencial Gmail: \"Gmail FCV Citas\" (misma de WF-001/WF-002). Destinatario configurable en el nodo Configuracion (reportRecipient); no requiere datos reales de pacientes.",
+        "content": "## WF-003 - Resumen operativo diario (opcional/bonus)\nTrigger: Schedule (diario 07:00).\nConsulta GET /api/v1/admin/appointments/daily-summary (agregados por sede/estado/especialidad ya calculados en el backend) usando la misma credencial \"Citas API Admin Token\" (HTTP Templated Custom Auth) de WF-001, idealmente con un usuario de rol AUTOMATION en vez de ADMIN completo.\nSi la API falla, se envia igualmente un correo de incidencia (no se omite el aviso); el detalle del error se escapa antes de insertarse en el HTML.\nTrazabilidad: Data Table daily_summary_log (SENT/FAILED).\nCredencial Gmail: \"Gmail FCV Citas\" (misma de WF-001/WF-002). Destinatario configurable en el nodo Configuracion (reportRecipient); no requiere datos reales de pacientes.",
         "color": 4
       }
     }

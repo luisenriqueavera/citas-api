@@ -48,9 +48,38 @@ Flujo: `Schedule (diario 07:00)` → `Configuracion` (apiBaseUrl, reportRecipien
 
 Los 3 JSON estan libres de secretos/credenciales embebidos (solo referencias `newCredential(...)` por nombre). **Nota de portabilidad:** cada JSON referencia sus Data Tables (`appointment_reminders_sent`, `appointment_notifications_log`, `daily_summary_log`) por el `dataTableId` interno de esta instancia de n8n; al importar en otra instancia hay que recrear esas tablas (mismas columnas, documentadas en cada seccion) y reapuntar los nodos "Registrar/Omitir ...", igual que con las credenciales de Gmail y de la API.
 
+## Actualizacion 2026-10-01 (sesion posterior) — mitigacion de riesgos S5
+
+A partir de la auditoria de `s5-untrusted-content-and-residual-risks.md`, se aplicaron a nivel de codigo (sin tocar la instancia real de n8n ni activar workflows) las 3 mitigaciones siguientes:
+
+- **Riesgo #1 (webhook sin auth):** `AppointmentWebhookNotifier` ahora envia el header `X-Webhook-Secret` cuando `APPOINTMENT_WEBHOOK_SECRET` esta configurado (`application.yml` + `.env.example`); el nodo Webhook de WF-002 exige `authentication: headerAuth`. Cubierto por 2 casos nuevos en `AppointmentWebhookNotifierTest` (header presente/ausente) usando un servidor HTTP JDK embebido, sin dependencias nuevas.
+- **Riesgo #2 (HTML sin escapar):** las 8 expresiones `htmlBody` de WF-001/002/003 ahora escapan `& < > " '` en los campos de texto libre (`patientName`, `professionalName`, `specialtyName`, `reason`, `locationName`, `status`, `error`) antes de concatenarlos.
+- **Riesgo #3 (token ADMIN completo):** nuevo rol de catalogo `AUTOMATION` (`V7__automation_role.sql`), nuevo endpoint `POST /api/v1/admin/automation-accounts` (solo ADMIN) para crear la cuenta de servicio, y `SecurityConfiguration` ahora permite `GET /api/v1/admin/appointments/upcoming-reminders` y `/daily-summary` a `ADMIN` o `AUTOMATION`, mientras el resto de `/api/v1/admin/**` sigue exigiendo `ADMIN`. Cubierto por `AutomationRoleIntegrationTest` (creacion de cuenta, bloqueo a no-admin, acceso de AUTOMATION solo a los 2 endpoints de lectura).
+
+**Limite de esta actualizacion:** Docker Desktop no arrancaba en el entorno de ejecucion de esta sesion ("Docker Desktop is unable to start"), y no hay Java/Maven/Node instalados directamente en el host, asi que **nada de esto se compilo ni se corrio con `mvn test`**. La revision fue manual: lectura cruzada de las clases modificadas/nuevas contra los patrones ya usados en el proyecto (firma de constructor, imports, convenciones de `AdminCatalogController`/`SecurityConfiguration`), y validacion de que los 3 JSON de n8n siguen siendo JSON bien formado. Esto reduce pero no elimina el riesgo de un error de compilacion no detectado.
+
+Apiweb (`citas-web`): se corrigio ademas un gap independiente marcado como pendiente mas abajo en este documento ("Migrar las llamadas HTTP ya existentes...") — los 13 metodos de S2/S3 en `fcv-data.service.ts` que usaban rutas relativas ahora usan `apiBaseUrl` como el resto.
+
+## Actualizacion 2026-10-01 (sesion posterior, parte 2) — credenciales reales y prueba en vivo de WF-002
+
+El usuario configuro en su instancia real de n8n las 3 credenciales pendientes:
+- **Webhook Secret Compartido** (Header Auth, header `X-Webhook-Secret`) en el nodo Webhook de WF-002.
+- **Gmail FCV Citas** (Gmail OAuth2, scope minimo `gmail.compose` — solo enviar/gestionar borradores, sin lectura/borrado de la bandeja) en los 3 workflows.
+- **Citas API Admin Token** (Simplified Custom Auth; el campo auto-generado para `{{token}}` no acepto guardar sin valor, asi que el token quedo escrito literal dentro del Auth template en vez de via placeholder — limitacion de la UI de n8n, no del diseno) en WF-001 y WF-003, usando el token de la cuenta `AUTOMATION` real creada via `POST /api/v1/admin/automation-accounts`.
+
+Con eso se ejecuto una prueba real de extremo a extremo contra WF-002: `curl` con header `X-Webhook-Secret` correcto y payload incluyendo `patientName: "María O'Brien <script>alert(1)</script>"` (caso de prueba deliberado para el riesgo #2). Resultado:
+- El webhook acepto la peticion (antes, sin el header, un 404/401 lo habria rechazado).
+- La ejecucion completa tomo ~33s (reintentos normales de Gmail) y termino en `Success`.
+- Llego el correo real a la bandeja Gmail del usuario con asunto "Cita especializada aprobada - FCV", y el cuerpo mostro el nombre con las etiquetas `<script>` como **texto plano literal**, confirmando que el escape de HTML funciona en produccion, no solo en el JSON versionado.
+
+**Limite de WF-001/WF-003:** sus nodos HTTP Request llaman desde n8n Cloud hacia `http://localhost:8080` (el backend del usuario, corriendo en su maquina via Docker). n8n Cloud no puede resolver el `localhost` del usuario, asi que una prueba real de extremo a extremo de esos dos workflows requiere exponer el backend local a internet (p. ej. `ngrok`) o usar datos simulados ("pin data") sobre el nodo HTTP Request, pendiente de decision del usuario sobre cual camino tomar.
+
+Ninguno de los 3 workflows esta activado todavia (`active: false` en los 3).
+
 ## Pendiente para el cierre de S5–S6
 
-- Compilar/verificar el backend completo (`mvn test` via Docker): cambios de WF-002 (payload enriquecido, gap de webhook) y los 2 endpoints nuevos de WF-001/WF-003 no se compilaron en este entorno.
-- Autorizar la credencial Gmail OAuth2 propia y la credencial "Citas API Admin Token" (con un accessToken ADMIN real), y repetir las mismas pruebas controladas para confirmar un envio/consulta real exitosos.
+- **Compilar/verificar el backend completo (`mvn test` via Docker)**: ademas de los cambios de WF-002/endpoints de la ronda anterior, ahora incluye el header de secreto del webhook y el rol/endpoint AUTOMATION — nada de esto se ha compilado todavia (ver limite arriba). Hacerlo en cuanto Docker este disponible, antes de dar S5/S6 por cerrado.
+- En n8n (accion del usuario, no de este agente): crear la credencial Header Auth "Webhook Secret Compartido" para WF-002 con el mismo valor que `APPOINTMENT_WEBHOOK_SECRET"; crear la cuenta AUTOMATION real via el nuevo endpoint, loguearse con ella y usar ese `accessToken` (no uno de ADMIN) en la credencial "Citas API Admin Token" de WF-001/WF-003.
+- Autorizar la credencial Gmail OAuth2 propia, y repetir las pruebas controladas de WF-001/002/003 para confirmar un envio/consulta real exitosos con las credenciales ya endurecidas.
 - Activar cada workflow solo despues de validar la salida real esperada (regla explicita de la guia).
-- Documentar riesgos residuales de seguridad (bloque S5: contenido no confiable / respuesta MCP) si aun no se hizo en otra pagina de la wiki.
+- Riesgos #4 (expiracion silenciosa del token) y #5 (retencion de datos en Data Tables) de `s5-untrusted-content-and-residual-risks.md` siguen sin mitigar; quedan como decision pendiente del usuario sobre prioridad/esfuerzo.

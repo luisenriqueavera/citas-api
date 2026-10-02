@@ -41,7 +41,7 @@
         "options": {}
       },
       "onError": "continueErrorOutput",
-      "notes": "Requiere credencial 'Citas API Admin Token' (HTTP Templated Custom Auth): plantilla {\"headers\":{\"Authorization\":\"Bearer {{token}}\"}} con un accessToken de login ADMIN. Nunca en este JSON."
+      "notes": "Requiere credencial 'Citas API Admin Token' (HTTP Templated Custom Auth): plantilla {\"headers\":{\"Authorization\":\"Bearer {{token}}\"}} con un accessToken obtenido de POST /api/auth/login. Recomendado: usar un usuario con rol AUTOMATION (creado via POST /api/v1/admin/automation-accounts) en vez de un ADMIN completo, ya que este endpoint solo necesita lectura de upcoming-reminders (riesgo #3, s5-untrusted-content-and-residual-risks.md). Nunca en este JSON."
     },
     {
       "id": "39120e27-0f08-4018-abd0-80a19f1faa8b",
@@ -85,7 +85,7 @@
         "assignments": {
           "assignments": [
             { "id": "m1", "name": "subject", "value": "Recordatorio de cita - FCV", "type": "string" },
-            { "id": "m2", "name": "htmlBody", "value": "={{ \"<p>Hola \" + $json.patientName + \",</p><p>Te recordamos tu cita con \" + $json.professionalName + \" (\" + $json.specialtyName + \") en \" + $json.locationName + \" el \" + $json.startAt + \".</p>\" }}", "type": "string" }
+            { "id": "m2", "name": "htmlBody", "value": "={{ (() => { const esc = (v) => String(v ?? \"\").replace(/&/g, \"&amp;\").replace(/</g, \"&lt;\").replace(/>/g, \"&gt;\").replace(/\"/g, \"&quot;\").replace(/'/g, \"&#39;\"); return \"<p>Hola \" + esc($json.patientName) + \",</p><p>Te recordamos tu cita con \" + esc($json.professionalName) + \" (\" + esc($json.specialtyName) + \") en \" + esc($json.locationName) + \" el \" + esc($json.startAt) + \".</p>\"; })() }}", "type": "string" }
           ]
         }
       }
@@ -151,7 +151,7 @@
       "typeVersion": 1,
       "position": [100, 300],
       "parameters": {
-        "content": "## WF-001 - Recordatorio de citas proximas\nTrigger: Schedule (cada 6 horas).\nConsulta GET /api/v1/admin/appointments/upcoming-reminders (requiere credencial tipo \"HTTP Templated Custom Auth\" llamada \"Citas API Admin Token\": configurar plantilla {\"headers\":{\"Authorization\":\"Bearer {{token}}\"}} con el accessToken de un login ADMIN contra citas-api; expira segun app.jwt.access-minutes, renovar periodicamente en el lab).\nDedup: antes de enviar, se verifica en la Data Table appointment_reminders_sent que la cita no se haya recordado ya; solo se registra ahi tras un envio exitoso de Gmail, asi que un fallo de Gmail o de la API se reintenta solo en el siguiente ciclo (sin tabla de reintentos extra).\nCredencial Gmail: \"Gmail FCV Citas\" (misma credencial que WF-002).",
+        "content": "## WF-001 - Recordatorio de citas proximas\nTrigger: Schedule (cada 6 horas).\nConsulta GET /api/v1/admin/appointments/upcoming-reminders (requiere credencial tipo \"HTTP Templated Custom Auth\" llamada \"Citas API Admin Token\": configurar plantilla {\"headers\":{\"Authorization\":\"Bearer {{token}}\"}} con el accessToken de login contra citas-api; expira segun app.jwt.access-minutes, renovar periodicamente en el lab). Recomendado: usar un usuario con rol AUTOMATION (POST /api/v1/admin/automation-accounts) en vez de un ADMIN completo, para minimo privilegio.\nDedup: antes de enviar, se verifica en la Data Table appointment_reminders_sent que la cita no se haya recordado ya; solo se registra ahi tras un envio exitoso de Gmail, asi que un fallo de Gmail o de la API se reintenta solo en el siguiente ciclo (sin tabla de reintentos extra).\nCredencial Gmail: \"Gmail FCV Citas\" (misma credencial que WF-002).",
         "color": 4
       }
     }

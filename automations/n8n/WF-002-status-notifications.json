@@ -7,7 +7,8 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.2,
       "position": [0, 0],
-      "parameters": { "httpMethod": "POST", "path": "appointment-status-notification", "responseMode": "responseNode" }
+      "parameters": { "httpMethod": "POST", "path": "appointment-status-notification", "responseMode": "responseNode", "authentication": "headerAuth" },
+      "notes": "Requiere credencial 'Webhook Secret Compartido' (Header Auth, header name X-Webhook-Secret) con el mismo valor que APPOINTMENT_WEBHOOK_SECRET en citas-api. Nunca en este JSON. Sin esta credencial, cualquiera que descubra la URL puede invocar el webhook con un payload arbitrario (riesgo #1, s5-untrusted-content-and-residual-risks.md)."
     },
     {
       "id": "47f9cf23-fa79-415a-8498-cd8cc911ebd5",
@@ -89,7 +90,7 @@
         "assignments": {
           "assignments": [
             { "id": "s1", "name": "subject", "value": "Cita cancelada - FCV", "type": "string" },
-            { "id": "s2", "name": "htmlBody", "value": "={{ \"<p>Hola \" + $json.patientName + \",</p><p>Tu cita con \" + $json.professionalName + \" (\" + $json.specialtyName + \") programada para \" + $json.scheduledStartAt + \" fue <strong>cancelada</strong>.</p>\" }}", "type": "string" }
+            { "id": "s2", "name": "htmlBody", "value": "={{ (() => { const esc = (v) => String(v ?? \"\").replace(/&/g, \"&amp;\").replace(/</g, \"&lt;\").replace(/>/g, \"&gt;\").replace(/\"/g, \"&quot;\").replace(/'/g, \"&#39;\"); return \"<p>Hola \" + esc($json.patientName) + \",</p><p>Tu cita con \" + esc($json.professionalName) + \" (\" + esc($json.specialtyName) + \") programada para \" + esc($json.scheduledStartAt) + \" fue <strong>cancelada</strong>.</p>\"; })() }}", "type": "string" }
           ]
         }
       }
@@ -106,7 +107,7 @@
         "assignments": {
           "assignments": [
             { "id": "s1", "name": "subject", "value": "Cita especializada aprobada - FCV", "type": "string" },
-            { "id": "s2", "name": "htmlBody", "value": "={{ \"<p>Hola \" + $json.patientName + \",</p><p>Tu cita especializada con \" + $json.professionalName + \" (\" + $json.specialtyName + \") programada para \" + $json.scheduledStartAt + \" fue <strong>aprobada</strong>.</p>\" }}", "type": "string" }
+            { "id": "s2", "name": "htmlBody", "value": "={{ (() => { const esc = (v) => String(v ?? \"\").replace(/&/g, \"&amp;\").replace(/</g, \"&lt;\").replace(/>/g, \"&gt;\").replace(/\"/g, \"&quot;\").replace(/'/g, \"&#39;\"); return \"<p>Hola \" + esc($json.patientName) + \",</p><p>Tu cita especializada con \" + esc($json.professionalName) + \" (\" + esc($json.specialtyName) + \") programada para \" + esc($json.scheduledStartAt) + \" fue <strong>aprobada</strong>.</p>\"; })() }}", "type": "string" }
           ]
         }
       }
@@ -123,7 +124,7 @@
         "assignments": {
           "assignments": [
             { "id": "s1", "name": "subject", "value": "Cita especializada rechazada - FCV", "type": "string" },
-            { "id": "s2", "name": "htmlBody", "value": "={{ \"<p>Hola \" + $json.patientName + \",</p><p>Tu cita especializada con \" + $json.professionalName + \" (\" + $json.specialtyName + \") programada para \" + $json.scheduledStartAt + \" fue <strong>rechazada</strong>.\" + ($json.reason ? \" Motivo: \" + $json.reason : \"\") + \"</p>\" }}", "type": "string" }
+            { "id": "s2", "name": "htmlBody", "value": "={{ (() => { const esc = (v) => String(v ?? \"\").replace(/&/g, \"&amp;\").replace(/</g, \"&lt;\").replace(/>/g, \"&gt;\").replace(/\"/g, \"&quot;\").replace(/'/g, \"&#39;\"); return \"<p>Hola \" + esc($json.patientName) + \",</p><p>Tu cita especializada con \" + esc($json.professionalName) + \" (\" + esc($json.specialtyName) + \") programada para \" + esc($json.scheduledStartAt) + \" fue <strong>rechazada</strong>.\" + ($json.reason ? \" Motivo: \" + esc($json.reason) : \"\") + \"</p>\"; })() }}", "type": "string" }
           ]
         }
       }
@@ -140,7 +141,7 @@
         "assignments": {
           "assignments": [
             { "id": "s1", "name": "subject", "value": "Reprogramacion aprobada - FCV", "type": "string" },
-            { "id": "s2", "name": "htmlBody", "value": "={{ \"<p>Hola \" + $json.patientName + \",</p><p>Tu solicitud de reprogramacion con \" + $json.professionalName + \" (\" + $json.specialtyName + \") fue <strong>aprobada</strong>. Nueva fecha: \" + $json.scheduledStartAt + \".</p>\" }}", "type": "string" }
+            { "id": "s2", "name": "htmlBody", "value": "={{ (() => { const esc = (v) => String(v ?? \"\").replace(/&/g, \"&amp;\").replace(/</g, \"&lt;\").replace(/>/g, \"&gt;\").replace(/\"/g, \"&quot;\").replace(/'/g, \"&#39;\"); return \"<p>Hola \" + esc($json.patientName) + \",</p><p>Tu solicitud de reprogramacion con \" + esc($json.professionalName) + \" (\" + esc($json.specialtyName) + \") fue <strong>aprobada</strong>. Nueva fecha: \" + esc($json.scheduledStartAt) + \".</p>\"; })() }}", "type": "string" }
           ]
         }
       }
@@ -157,7 +158,7 @@
         "assignments": {
           "assignments": [
             { "id": "s1", "name": "subject", "value": "Reprogramacion rechazada - FCV", "type": "string" },
-            { "id": "s2", "name": "htmlBody", "value": "={{ \"<p>Hola \" + $json.patientName + \",</p><p>Tu solicitud de reprogramacion con \" + $json.professionalName + \" (\" + $json.specialtyName + \") fue <strong>rechazada</strong>.\" + ($json.reason ? \" Motivo: \" + $json.reason.replace(\"RESCHEDULE_REJECTED: \", \"\") : \"\") + \"</p>\" }}", "type": "string" }
+            { "id": "s2", "name": "htmlBody", "value": "={{ (() => { const esc = (v) => String(v ?? \"\").replace(/&/g, \"&amp;\").replace(/</g, \"&lt;\").replace(/>/g, \"&gt;\").replace(/\"/g, \"&quot;\").replace(/'/g, \"&#39;\"); return \"<p>Hola \" + esc($json.patientName) + \",</p><p>Tu solicitud de reprogramacion con \" + esc($json.professionalName) + \" (\" + esc($json.specialtyName) + \") fue <strong>rechazada</strong>.\" + ($json.reason ? \" Motivo: \" + esc($json.reason.replace(\"RESCHEDULE_REJECTED: \", \"\")) : \"\") + \"</p>\"; })() }}", "type": "string" }
           ]
         }
       }
@@ -336,7 +337,7 @@
       "typeVersion": 1,
       "position": [100, 300],
       "parameters": {
-        "content": "## WF-002 - Notificacion de cambio de estado\nTrigger: Webhook POST desde citas-api (AppointmentWebhookNotifier).\nEventos: cita especializada aprobada/rechazada, reprogramacion aprobada/rechazada, cancelacion.\nTrazabilidad: cada envio (exitoso, fallido o evento desconocido) se registra en la Data Table appointment_notifications_log.\nCredencial Gmail: configurar \"Gmail FCV Citas\" con OAuth propio antes de activar.",
+        "content": "## WF-002 - Notificacion de cambio de estado\nTrigger: Webhook POST desde citas-api (AppointmentWebhookNotifier).\nEventos: cita especializada aprobada/rechazada, reprogramacion aprobada/rechazada, cancelacion.\nSeguridad: el nodo Webhook exige credencial Header Auth \"Webhook Secret Compartido\" (header X-Webhook-Secret) con el mismo valor que APPOINTMENT_WEBHOOK_SECRET en citas-api; sin esto, cualquiera que descubra la URL podria disparar correos con un payload arbitrario.\nLos campos de texto libre (patientName, professionalName, specialtyName, reason) se escapan antes de insertarse en el HTML del correo.\nTrazabilidad: cada envio (exitoso, fallido o evento desconocido) se registra en la Data Table appointment_notifications_log.\nCredencial Gmail: configurar \"Gmail FCV Citas\" con OAuth propio antes de activar.",
         "color": 4
       }
     }
