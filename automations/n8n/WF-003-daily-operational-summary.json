@@ -92,7 +92,7 @@
       "parameters": {
         "resource": "message",
         "operation": "send",
-        "sendTo": "={{ $json.reportRecipient }}",
+        "sendTo": "={{ $('Configuracion').item.json.reportRecipient }}",
         "subject": "={{ $json.subject }}",
         "emailType": "html",
         "message": "={{ $json.htmlBody }}",
