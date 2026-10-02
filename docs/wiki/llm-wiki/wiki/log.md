@@ -22,3 +22,4 @@
 - BUILD: el estudiante configuro las 3 credenciales reales en n8n (Header Auth del webhook, Gmail OAuth2 de minimo privilegio, token de la cuenta AUTOMATION para "Citas API Admin Token") y se validaron los 3 workflows con evidencia real (correo recibido en cada caso).
 - FIX: bug encontrado en WF-003 durante la prueba controlada — `Enviar resumen operativo` perdia `reportRecipient` por el reemplazo de item que hace el nodo HTTP Request; corregido a referenciar `$('Configuracion').item.json.reportRecipient`, aplicado en vivo y sincronizado en el JSON del repo.
 - DECISION: el estudiante decidio no activar los workflows todavia; los activara los 3 juntos en una sesion posterior. Detalle completo en [[s6-wf002-status]].
+- BUILD: WF-001, WF-002 y WF-003 activados (`publish_workflow`, los 3 en `active: true`). WF-002 ya responde en produccion; WF-001/WF-003 quedan con la limitacion conocida de token AUTOMATION expirado hasta renovarlo manualmente.
